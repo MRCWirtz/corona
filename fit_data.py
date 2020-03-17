@@ -25,7 +25,7 @@ plt.axvline(45, color='C1', ls='dashed')
 plt.text(46, 0.01*popt[0], s='eastern', color='C1')
 plt.xlabel('days')
 plt.ylabel('cases')
-plt.savefig('img/predict_cases.png', bbox_inches='tight')
+plt.savefig('img/fit_cases.png', bbox_inches='tight')
 plt.close()
 
 cases_day = np.diff(cases)
