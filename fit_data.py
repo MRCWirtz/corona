@@ -3,10 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from scipy.optimize import curve_fit
-import models
-from latex_style import with_latex
 
+import models
 from load_data import load_data
+from latex_style import with_latex
 mpl.rcParams.update(with_latex)
 
 data = load_data()
