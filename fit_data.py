@@ -12,18 +12,20 @@ mpl.rcParams.update(with_latex)
 data = load_data()
 os.makedirs('img', exist_ok=True)
 
-confirmed = data.to_numpy()[34:, 0] - 16
+confirmed = data.to_numpy()[36:, 0] - 16
 days = np.arange(len(confirmed))
 
-popt, pcov = curve_fit(models.logistic_function, days, confirmed, p0=(50000, 1e-3), sigma=np.sqrt(confirmed), absolute_sigma=True)
+popt, pcov = curve_fit(models.logistic_function, days, confirmed, p0=(1e5, 1e-6, 10), sigma=np.sqrt(confirmed), absolute_sigma=True)
 perr = np.sqrt(np.diag(pcov))
+
 plt.scatter(days, confirmed, marker='o', color='k', label='germany')
 x = np.linspace(days[0], days[-1]*2.5, 300)
+
 plt.plot(x, models.logistic_function(x, *popt), color='red')
-plt.plot(x, models.logistic_function(x, popt[0]+perr[0], popt[1]-perr[1]), color='red', ls='dashed')
-plt.plot(x, models.logistic_function(x, popt[0]-perr[0], popt[1]+perr[1]), color='red', ls='dashed')
-plt.axhline(popt[0], color='red', ls='dotted')
-plt.text(days[int(np.rint(0.02*len(days)))], 0.92*popt[0], s='%i confirmed' % popt[0], color='red')
+plt.plot(x, models.logistic_function(x, popt[0]+perr[0], popt[1], popt[2]), color='red', ls='dotted')
+plt.plot(x, models.logistic_function(x, popt[0]-perr[0], popt[1], popt[2]), color='red', ls='dotted')
+plt.axhline(popt[0], color='red', ls='dashed')
+plt.text(days[int(np.rint(0.02*len(days)))], 0.9*popt[0], s='%i confirmed' % popt[0], color='red')
 plt.axvline(45, color='C1', ls='dashed')
 plt.text(46, 0.01*popt[0], s='eastern', color='C1')
 plt.xlabel('days')

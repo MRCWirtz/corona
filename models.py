@@ -1,8 +1,8 @@
 import numpy as np
 
 
-def logistic_function(x, a, b):
-    return a / (1 + np.exp(-b*a*x) * (a / 16))
+def logistic_function(x, a, b, c):
+    return a / (1 + (a / c - 1) * np.exp(-a*b*x))
 
 
 class SimplePandemie:
