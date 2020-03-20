@@ -34,7 +34,7 @@ class SimplePandemie:
         self._assign_timing(np.arange(infected_start))
 
         self.scale = 1
-        self.scale_th = 0.5
+        self.fraction_buffer = 0
         self.scale_each = np.ones(nbuffer).astype(int)
 
     def infect(self):
@@ -46,6 +46,7 @@ class SimplePandemie:
         selection = np.cumsum(~self.infected * self.scale_each) <= self.infected_day
         select_idx = np.where(~self.infected * selection)[0]
         self.infected[select_idx] = True
+        self.fraction_buffer = len(select_idx) / len(self.infected)
         self._assign_timing(select_idx)
 
     def detect(self):
@@ -85,12 +86,10 @@ class SimplePandemie:
         self.scale_each[mask] = self.scale
 
     def _scale(self):
-        if np.sum(self.infected) > self.scale_th * len(self.infected):
-            self.scale += 1
-            self.scale_th *= 1.5
-        elif self.scale > 1:
-            self.scale -= 1
-            self.scale_th /= 1.5
+        if (self.fraction_buffer > 0.001) or (np.sum(self.infected) / len(self.infected) > 0.5):
+            self.scale += max(1, int(self.fraction_buffer * 1000))
+        else:
+            self.scale = max(1, self.scale-1)
 
     def is_contagious(self):
         return self.infected & (self.days == self.days_to_contagious)
@@ -123,7 +122,7 @@ if __name__ == "__main__":
     infected, infected_confirmed = np.zeros(days.size), np.zeros(days.size)
     infected_day, infected_day_confirmed = np.zeros(days.size), np.zeros(days.size)
     cured, dead = np.zeros(days.size), np.zeros(days.size)
-    world = SimplePandemie(lethality=0.2, detection_rate=0.8, total_population=10000, nbuffer=10000)
+    world = SimplePandemie(lethality=0.2, detection_rate=0.8, total_population=10000000, nbuffer=100000)
     for i in days:
         world.update()
         infected[i], infected_confirmed[i] = world.infected_total, world.infected_total_confirmed
