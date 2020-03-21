@@ -5,7 +5,7 @@ def logistic_function(x, a, b, c):
     return a / (1 + (a / c - 1) * np.exp(-a*b*x))
 
 
-class SimplePandemie:
+class IndividuumDrivenPandemie:
     """ SimplePandemie """
 
     def __init__(self, n_p=15, attack_rate=0.15, t_contagious=4, t_cured=14, t_death=17, t_confirmed=6, infected_start=10,
@@ -87,7 +87,7 @@ class SimplePandemie:
 
     def _scale(self):
         if (self.fraction_buffer > 0.001) or (np.sum(self.infected) / len(self.infected) > 0.5):
-            self.scale += max(1, int(self.fraction_buffer * 1000))
+            self.scale += max(1, int(self.fraction_buffer * 100000))
         else:
             self.scale = max(1, self.scale-1)
 
@@ -108,8 +108,75 @@ class SimplePandemie:
         self.detect()
         self.cure()
         self.die()
-        self._scale()
+        # self._scale()
+        # print('slots used: %s \tscale=%s' % (np.sum(self.infected), self.scale))
         self.days[self.infected] += 1
+
+
+class DayDrivenPandemie(object):
+
+    def __init__(self, n_days=100, n_p=15, attack_rate=0.15, t_contagious=4, t_cured=14, t_death=17, t_confirmed=6,
+                 infected_start=10, lethality=0.01, detection_rate=0.8, total_population=83e6, contagious_start=7, confirmed_start=7):
+
+        assert infected_start >= contagious_start, "More contagious than infected people!"
+        assert infected_start >= confirmed_start, "More confirmed than infected people!"
+        self.n_p = n_p
+        self.attack_rate = attack_rate
+        self.lethality = lethality
+        self.detection_rate = detection_rate
+        self.t_contagious = t_contagious
+        self.t_cured = t_cured
+        self.t_death = t_death
+        self.t_confirmed = t_confirmed
+        self.total_population = total_population
+
+        self.n_p_steps = {}
+
+        self.day = 0
+        self.n_days = n_days
+        self.contagious_p_day = np.zeros(n_days).astype(np.uint)
+        self.death_p_day = np.zeros(n_days).astype(np.uint)
+        self.cured_p_day = np.zeros(n_days).astype(np.uint)
+        self.detect_p_day = np.zeros(n_days).astype(np.uint)
+
+        self.infected, self.contagious = infected_start, contagious_start
+        self.infected_total, self.confirmed_total = infected_start, confirmed_start
+        self.infected_day = 0
+        self.dead, self.dead_day, self.cured = 0, 0, 0
+        self._assign_timing(infected_start)
+
+    def _count_p_days(self, n, t):
+        return np.bincount(self.day + np.random.poisson(t, size=n), minlength=self.n_days)[:self.n_days].astype(np.uint)
+
+    def _assign_timing(self, n):
+        n_death = np.random.binomial(n, self.lethality)
+        n_detected = np.random.binomial(n - n_death, self.detection_rate) + n_death
+        self.contagious_p_day += self._count_p_days(n, self.t_contagious)
+        self.cured_p_day += self._count_p_days(n - n_death, self.t_cured)
+        self.death_p_day += self._count_p_days(n_death, self.t_death)
+        self.detect_p_day += self._count_p_days(n_detected, self.t_confirmed)
+
+    def infect(self):
+        immune = self.infected + self.cured
+        n_eff = self.n_p * (self.total_population - immune) / self.total_population
+        self.infected_day = np.sum(np.random.poisson(n_eff*self.attack_rate, size=self.contagious_p_day[self.day]))
+        self.infected += self.infected_day
+        self.infected_total += self.infected_day
+        self._assign_timing(self.infected_day)
+
+    def update(self):
+        if str(self.day) in self.n_p_steps:
+            self.n_p = self.n_p_steps[str(self.day)]
+        self.infect()
+        self.infected -= (self.cured_p_day[self.day] + self.death_p_day[self.day])
+        self.contagious += self.contagious_p_day[self.day] - self.cured_p_day[self.day] - self.death_p_day[self.day]
+        self.cured += self.cured_p_day[self.day]
+        self.dead += self.death_p_day[self.day]
+        self.confirmed_total += self.detect_p_day[self.day]
+        self.day += 1
+
+    def change_n_p(self, day, n_p):
+        self.n_p_steps.update({str(day): n_p})
 
 
 if __name__ == "__main__":
@@ -118,11 +185,11 @@ if __name__ == "__main__":
     from latex_style import with_latex
     mpl.rcParams.update(with_latex)
 
-    days = np.arange(100)
+    days = np.arange(42)
     infected, infected_confirmed = np.zeros(days.size), np.zeros(days.size)
     infected_day, infected_day_confirmed = np.zeros(days.size), np.zeros(days.size)
     cured, dead = np.zeros(days.size), np.zeros(days.size)
-    world = SimplePandemie(lethality=0.2, detection_rate=0.8, total_population=10000000, nbuffer=100000)
+    world = DayDrivenPandemie(lethality=0.2, detection_rate=0.8)
     for i in days:
         world.update()
         infected[i], infected_confirmed[i] = world.infected_total, world.infected_total_confirmed
@@ -136,8 +203,8 @@ if __name__ == "__main__":
     plt.plot(days, dead, color='red', label='dead')
     plt.plot(days, cured, color='green', label='cured')
     plt.legend(loc='upper left', fontsize=14)
-    # plt.yscale('log')
+    plt.yscale('log')
     plt.xlabel("days")
     plt.ylabel("counts")
-    plt.savefig('img/first_model.png', bbox_inches='tight')
+    plt.savefig('img/first_model_day.png', bbox_inches='tight')
     plt.close()
