@@ -135,10 +135,10 @@ class DayDrivenPandemie(object):
 
         self.day = 0
         self.n_days = n_days
-        self.contagious_p_day = np.zeros(n_days).astype(np.uint)
-        self.death_p_day = np.zeros(n_days).astype(np.uint)
-        self.cured_p_day = np.zeros(n_days).astype(np.uint)
-        self.detect_p_day = np.zeros(n_days).astype(np.uint)
+        self.contagious_p_day = np.zeros(n_days)
+        self.death_p_day = np.zeros(n_days)
+        self.cured_p_day = np.zeros(n_days)
+        self.detect_p_day = np.zeros(n_days)
 
         self.infected, self.contagious = infected_start, contagious_start
         self.infected_total, self.confirmed_total = infected_start, confirmed_start
@@ -147,11 +147,8 @@ class DayDrivenPandemie(object):
         self._assign_timing(infected_start)
 
     def _count_p_days(self, n, t):
-        if n < 1000:
-            return np.bincount(self.day + np.random.poisson(t, size=n), minlength=self.n_days)[:self.n_days].astype(np.uint)
-        else:
-            p_days = np.rint(n * poisson.pmf(np.arange(self.n_days - self.day), mu=t))
-            return np.pad(p_days, (self.day, 0), mode='constant').astype(np.uint)
+        p_days = n * poisson.pmf(np.arange(self.n_days - self.day), mu=t)
+        return np.pad(p_days, (self.day, 0), mode='constant')
 
     def _assign_timing(self, n):
         n_death = np.random.binomial(n, self.lethality)
@@ -164,7 +161,8 @@ class DayDrivenPandemie(object):
     def infect(self):
         immune = self.infected + self.cured
         n_eff = self.n_p * (self.total_population - immune) / self.total_population
-        self.infected_day = np.sum(np.random.poisson(n_eff*self.attack_rate, size=self.contagious_p_day[self.day]))
+        self.infected_day = self.contagious_p_day[self.day] * n_eff*self.attack_rate
+        # self.infected_day = np.sum(np.random.poisson(n_eff*self.attack_rate, size=self.contagious_p_day[self.day]))
         self.infected += self.infected_day
         self.infected_total += self.infected_day
         self._assign_timing(self.infected_day)
