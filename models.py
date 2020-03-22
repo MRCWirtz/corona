@@ -161,17 +161,10 @@ class DayDrivenPandemie(object):
         self.death_p_day += self._count_p_days(n_death, self.t_death)
         self.detect_p_day += self._count_p_days(n_detected, self.t_confirmed)
 
-    def _infect_day(self, n):
-        if n < 1000:
-            return np.sum(np.random.poisson(n*self.attack_rate, size=self.contagious_p_day[self.day]))
-        else:
-            _n = np.arange(int(10 * n * self.attack_rate))
-            return self.contagious_p_day[self.day] * np.sum(_n * poisson.pmf(_n, mu=n*self.attack_rate))
-
     def infect(self):
         immune = self.infected + self.cured
         n_eff = self.n_p * (self.total_population - immune) / self.total_population
-        self.infected_day = int(self._infect_day(n_eff))
+        self.infected_day = np.sum(np.random.poisson(n_eff*self.attack_rate, size=self.contagious_p_day[self.day]))
         self.infected += self.infected_day
         self.infected_total += self.infected_day
         self._assign_timing(self.infected_day)
