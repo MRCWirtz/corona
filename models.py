@@ -151,8 +151,8 @@ class DayDrivenPandemie(object):
         return np.pad(p_days, (self.day, 0), mode='constant')
 
     def _assign_timing(self, n):
-        n_death = np.random.binomial(n, self.lethality)
-        n_detected = np.random.binomial(n - n_death, self.detection_rate) + n_death
+        n_death = n * self.lethality
+        n_detected = self.detection_rate * (n - n_death) + n_death
         self.contagious_p_day += self._count_p_days(n, self.t_contagious)
         self.cured_p_day += self._count_p_days(n - n_death, self.t_cured)
         self.death_p_day += self._count_p_days(n_death, self.t_death)

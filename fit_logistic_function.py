@@ -6,7 +6,7 @@ from scipy.optimize import curve_fit
 
 import models
 from load_data import load_data
-from latex_style import with_latex
+from plotting import with_latex
 mpl.rcParams.update(with_latex)
 
 data = load_data()

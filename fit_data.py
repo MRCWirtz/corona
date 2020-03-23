@@ -3,13 +3,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
-from train_model import likelihood
-from models import DayDrivenPandemie
+from train_model import sample_likelihood, run_model
 from load_data import load_data
-from latex_style import with_latex
+from plotting import with_latex
 mpl.rcParams.update(with_latex)
 
-np.random.seed(1)
+scan_range = {'lethality': np.arange(0.005, 0.055, 0.005),
+              'burn-in': np.arange(2, 11, 1),
+              'R0-0': np.arange(2., 3.1, 0.1),
+              'R0-1': np.arange(1., 2.7, 0.2)}
+digits = {'lethality': 3, 'burn-in': 0, 'R0-0': 1, 'R0-1': 1}
+
 
 data = load_data()
 os.makedirs('img', exist_ok=True)
@@ -18,95 +22,48 @@ confirmed_data, dead_data = data.to_numpy()[36:, 0] - 16, data.to_numpy()[36:, 1
 confirmed_day_data, dead_day_data = np.diff(confirmed_data), np.diff(dead_data)
 days = np.arange(len(confirmed_data))
 
-
-def sample_likelihood(pars):
-    infected_confirmed, dead = np.zeros(days.size), np.zeros(days.size)
-    world = DayDrivenPandemie(n_days=days.size,
-                              n_p=pars[0]/0.15,
-                              attack_rate=0.15,
-                              detection_rate=0.8,
-                              lethality=pars[1],
-                              infected_start=int(pars[2]),
-                              contagious_start=int(pars[2]*2/3),
-                              confirmed_start=confirmed_data[0])
-
-    for i in days:
-        world.update()
-        infected_confirmed[i], dead[i] = world.confirmed_total, world.dead
-
-    return -likelihood(np.diff(infected_confirmed), confirmed_day_data, np.diff(dead), dead_day_data)
-
+scan_pars = ['lethality', 'burn-in', 'R0-0']
+day_action = 18 if ('R0-1' in scan_pars) else None
 
 lowest_like = np.inf
-r0_candidates = np.arange(2., 3.1, 0.1)
-lethality_candidates = np.arange(0.005, 0.06, 0.005)
-infected_start_candidates = np.arange(100, 500, 25)
-likelihoods = np.zeros((len(r0_candidates), len(lethality_candidates), len(infected_start_candidates)))
-for i, n in enumerate(r0_candidates):
-    for j, l in enumerate(lethality_candidates):
-        for k, i_s in enumerate(infected_start_candidates):
-            like = sample_likelihood([n, l, i_s])
-            print(n, l, i_s, like)
+likelihoods = np.zeros([len(scan_range[key]) for key in scan_pars])
+for i, a in enumerate(scan_range[scan_pars[0]]):
+    print('%s: %s' % (scan_pars[0], a))
+    for j, b in enumerate(scan_range[scan_pars[1]]):
+        for k, c in enumerate(scan_range[scan_pars[2]]):
+            like = sample_likelihood([a, b, c], confirmed_day_data, dead_day_data, day_action=day_action)
             likelihoods[i, j, k] = like
             if like < lowest_like:
                 lowest_like = like
                 min_idx = (i, j, k)
 
-like_proj = np.min(likelihoods, axis=1)
-plt.imshow(np.transpose(like_proj), cmap='inferno_r')
-xticks = np.rint(np.linspace(0, len(r0_candidates)-1, 6)).astype(int)
-plt.xticks(xticks, np.round(r0_candidates[xticks], 1))
-yticks = np.rint(np.linspace(0, len(infected_start_candidates)-1, 6)).astype(int)
-plt.yticks(yticks, np.round(infected_start_candidates[yticks], 1))
-plt.xlabel("R0")
-plt.ylabel("infected start")
-plt.savefig('img/likelihood_r0_infected-start.png', bbox_inches='tight')
-plt.close('all')
-
-like_proj = np.min(likelihoods, axis=2)
-plt.imshow(np.transpose(like_proj), cmap='inferno_r')
-plt.xticks(xticks, np.round(r0_candidates[xticks], 1))
-yticks = np.rint(np.linspace(0, len(lethality_candidates)-1, 6)).astype(int)
-plt.yticks(yticks, np.round(lethality_candidates[yticks], 3))
-plt.xlabel("np")
-plt.ylabel("lethality")
-plt.savefig('img/likelihood_r0_lethality.png', bbox_inches='tight')
-plt.close('all')
-
-like_proj = np.min(likelihoods, axis=2)
-plt.imshow(np.transpose(like_proj), cmap='inferno_r')
-xticks = np.rint(np.linspace(0, len(infected_start_candidates)-1, 6)).astype(int)
-plt.xticks(yticks, np.round(infected_start_candidates[xticks], 1))
-plt.yticks(yticks, np.round(lethality_candidates[yticks], 3))
-plt.xlabel("np")
-plt.ylabel("lethality")
-plt.savefig('img/likelihood_infected-start_lethality.png', bbox_inches='tight')
-plt.close('all')
+x = np.array([0, 1, 2])
+for i, par_i in enumerate(scan_pars):
+    for j, par_j in enumerate(scan_pars):
+        if j <= i:
+            continue
+        mask = (x != i) & (x != j)
+        like_proj = np.min(likelihoods, axis=np.where(mask)[0][0])
+        plt.imshow(like_proj.T, cmap='inferno_r')
+        xticks = np.rint(np.linspace(0, len(scan_range[par_i])-1, 6)).astype(int)
+        plt.xticks(xticks, np.round(scan_range[par_i][xticks], digits[par_i]))
+        yticks = np.rint(np.linspace(0, len(scan_range[par_j])-1, 6)).astype(int)
+        plt.yticks(yticks, np.round(scan_range[par_j][yticks],  digits[par_j]))
+        plt.xlabel('%s' % par_i)
+        plt.ylabel('%s' % par_j)
+        plt.savefig('img/likelihood_%s_%s.png' % (scan_pars[i], scan_pars[j]), bbox_inches='tight')
+        plt.close('all')
 
 i, j, k = min_idx[0], min_idx[1], min_idx[2]
+pars_opt = [scan_range[scan_pars[_i]][min_idx[_i]] for _i in range(len(scan_pars))]
 print('\nBest parameters:')
-print('R0 = %.1f' % r0_candidates[i])
-print('infected start: %.1f' % infected_start_candidates[k])
-print('lethality: %.4f' % lethality_candidates[j])
-pred_len = 40
-days_pred = np.arange(days.size + pred_len)
-infected, infected_confirmed = np.zeros(days_pred.size), np.zeros(days_pred.size)
-infected_day = np.zeros(days_pred.size)
-cured, dead = np.zeros(days_pred.size), np.zeros(days_pred.size)
-world = DayDrivenPandemie(n_days=days.size+pred_len,
-                          n_p=r0_candidates[i]/0.15,
-                          attack_rate=0.15,
-                          detection_rate=0.8,
-                          lethality=lethality_candidates[j],
-                          infected_start=int(infected_start_candidates[k]),
-                          contagious_start=int(infected_start_candidates[k]*2/3),
-                          confirmed_start=confirmed_data[0])
-world.change_n_p(days.size, 0.9/0.15)
+for ip, par in enumerate(scan_pars):
+    print('%s: %s' % (par, np.round(pars_opt[ip], digits[par])))
 
-for i in days_pred:
-    world.update()
-    infected[i], infected_confirmed[i] = world.infected_total, world.confirmed_total
-    infected_day[i] = world.infected_day
+pred_len = 21 if ('R0-1' in scan_pars) else 3
+burn_in = pars_opt[scan_pars.index('burn-in')] if ('burn-in' in scan_pars) else 5
+days_sim = days.size + burn_in + pred_len
+cases, confirmed, dead = run_model(pars_opt, days_sim, n_burn_in=burn_in, day_action=day_action)
 
 fig, axs = plt.subplots(2, 1)
 fig.set_figheight(10)
@@ -114,14 +71,14 @@ fig.set_figwidth(10)
 for ax in axs:
     ax.set_xlabel("days")
 
-axs[0].scatter(days, confirmed_data, marker='o', color='k', label='data (germany)')
-axs[0].plot(days, infected_confirmed[:days.size], color='k', label='model')
+axs[0].scatter(burn_in + days, confirmed_data, marker='o', color='k', label='data (germany)')
+axs[0].plot(np.arange(days_sim)[:-pred_len], confirmed[:-pred_len], color='k', label='model')
 axs[0].legend(loc="upper left")
 axs[0].set_ylabel("Confirmed Cases")
 axs[0].set_yscale("log")
 
-axs[1].scatter(days, dead_data, marker='o', color='k', label='data (germany)')
-axs[1].plot(days, np.cumsum(world.death_p_day)[:days.size], color='red', label='model')
+axs[1].scatter(burn_in + days, dead_data, marker='o', color='k', label='data (germany)')
+axs[1].plot(np.arange(days_sim)[:-pred_len], dead[:-pred_len], color='red', label='model')
 axs[1].legend(loc="upper left")
 axs[1].set_ylabel("Dead")
 axs[1].set_yscale("log")
@@ -130,31 +87,35 @@ axs[1].legend(loc='upper left', fontsize=14)
 plt.savefig('img/fit_data_model.png', bbox_inches='tight')
 plt.close("all")
 
+
 # Prediction
 fig, axs = plt.subplots(2, 2)
 fig.set_figheight(9)
 fig.set_figwidth(16)
 
-axs[0, 0].plot(days_pred, infected, color='blue', label='total (model)')
-axs[0, 0].plot(days_pred, infected_confirmed, color='k', label='confirmed (model)')
+cases, confirmed, dead = cases[burn_in:], confirmed[burn_in:], dead[burn_in:]
+days_pred = np.arange(len(cases))
+
+axs[0, 0].plot(days_pred, cases, color='blue', label='total (model)')
+axs[0, 0].plot(days_pred, confirmed, color='k', label='confirmed (model)')
 axs[0, 0].scatter(days, confirmed_data, marker='o', color='k', label='data (Germany)')
 axs[0, 0].set_ylabel("Cases")
 axs[0, 0].legend(loc='upper left', fontsize=14)
 
-axs[1, 0].plot(days_pred, np.cumsum(world.death_p_day), color='r', label='model')
+axs[1, 0].plot(days_pred, dead, color='r', label='model')
 axs[1, 0].scatter(days, dead_data, marker='o', color='k', label='data (Germany)')
 axs[1, 0].set_xlabel("Days")
 axs[1, 0].set_ylabel("Deaths")
 axs[1, 0].legend(loc='upper left', fontsize=14)
 
-axs[0, 1].plot(days_pred, infected_day, color='b', ls="dashed", label='total (model)')
-axs[0, 1].plot(days_pred, world.detect_p_day, color='k', ls="dashed", label='confirmed (model)')
-axs[0, 1].scatter(days[1:], np.diff(confirmed_data), marker='o', color='k', label='data (Germany)')
+axs[0, 1].plot(days_pred[1:], np.diff(cases), color='b', ls="dashed", label='total (model)')
+axs[0, 1].plot(days_pred[1:], np.diff(confirmed), color='k', ls="dashed", label='confirmed (model)')
+axs[0, 1].scatter(days[1:], confirmed_day_data, marker='o', color='k', label='data (Germany)')
 axs[0, 1].set_ylabel("New cases per day")
 axs[0, 1].legend(loc='upper left', fontsize=14)
 
-axs[1, 1].plot(days_pred, world.death_p_day, color='r', ls="dashed", label='model')
-axs[1, 1].scatter(days[1:], np.diff(dead_data), marker='o', color='k', label='data (Germany)')
+axs[1, 1].plot(days_pred[1:], np.diff(dead), color='r', ls="dashed", label='model')
+axs[1, 1].scatter(days[1:], dead_day_data, marker='o', color='k', label='data (Germany)')
 axs[1, 1].legend(loc="upper left")
 axs[1, 1].set_xlabel("Days")
 axs[1, 1].set_ylabel("New deaths per day")
