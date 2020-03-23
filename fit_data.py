@@ -54,7 +54,7 @@ for i, n in enumerate(n_p_candidates):
             likelihoods[i, j, k] = like
             if like < lowest_like:
                 lowest_like = like
-                in_idx = (i, j, k)
+                min_idx = (i, j, k)
 
 like_proj = np.min(likelihoods, axis=1)
 fig, ax = plt.subplots(1, 1)
