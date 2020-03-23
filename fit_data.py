@@ -22,7 +22,7 @@ days = np.arange(len(confirmed_data))
 def sample_likelihood(pars):
     infected_confirmed, dead = np.zeros(days.size), np.zeros(days.size)
     world = DayDrivenPandemie(n_days=days.size,
-                              n_p=pars[0],
+                              n_p=pars[0]/0.15,
                               attack_rate=0.15,
                               detection_rate=0.8,
                               lethality=pars[1],
@@ -38,11 +38,11 @@ def sample_likelihood(pars):
 
 
 lowest_like = np.inf
-n_p_candidates = np.arange(14, 20.5, 0.5)
+r0_candidates = np.arange(2., 3.1, 0.1)
 lethality_candidates = np.arange(0.005, 0.06, 0.005)
 infected_start_candidates = np.arange(100, 500, 25)
-likelihoods = np.zeros((len(n_p_candidates), len(lethality_candidates), len(infected_start_candidates)))
-for i, n in enumerate(n_p_candidates):
+likelihoods = np.zeros((len(r0_candidates), len(lethality_candidates), len(infected_start_candidates)))
+for i, n in enumerate(r0_candidates):
     for j, l in enumerate(lethality_candidates):
         for k, i_s in enumerate(infected_start_candidates):
             like = sample_likelihood([n, l, i_s])
@@ -54,38 +54,38 @@ for i, n in enumerate(n_p_candidates):
 
 like_proj = np.min(likelihoods, axis=1)
 plt.imshow(np.transpose(like_proj), cmap='inferno_r')
-xticks = np.rint(np.linspace(0, len(n_p_candidates)-1, 6)).astype(int)
-plt.xticks(xticks, np.round(n_p_candidates[xticks], 1))
+xticks = np.rint(np.linspace(0, len(r0_candidates)-1, 6)).astype(int)
+plt.xticks(xticks, np.round(r0_candidates[xticks], 1))
 yticks = np.rint(np.linspace(0, len(infected_start_candidates)-1, 6)).astype(int)
 plt.yticks(yticks, np.round(infected_start_candidates[yticks], 1))
-plt.xlabel("np")
+plt.xlabel("R0")
 plt.ylabel("infected start")
-plt.savefig('img/likelihood_np_is.png', bbox_inches='tight')
+plt.savefig('img/likelihood_r0_infected-start.png', bbox_inches='tight')
 plt.close('all')
 
 like_proj = np.min(likelihoods, axis=2)
 plt.imshow(np.transpose(like_proj), cmap='inferno_r')
-plt.xticks(xticks, np.round(n_p_candidates[xticks], 1))
+plt.xticks(xticks, np.round(r0_candidates[xticks], 1))
 yticks = np.rint(np.linspace(0, len(lethality_candidates)-1, 6)).astype(int)
 plt.yticks(yticks, np.round(lethality_candidates[yticks], 3))
 plt.xlabel("np")
 plt.ylabel("lethality")
-plt.savefig('img/likelihood_np_lethality.png', bbox_inches='tight')
+plt.savefig('img/likelihood_r0_lethality.png', bbox_inches='tight')
 plt.close('all')
 
 like_proj = np.min(likelihoods, axis=2)
 plt.imshow(np.transpose(like_proj), cmap='inferno_r')
-plt.xticks(xticks, np.round(n_p_candidates[xticks], 1))
-yticks = np.rint(np.linspace(0, len(lethality_candidates)-1, 6)).astype(int)
+xticks = np.rint(np.linspace(0, len(infected_start_candidates)-1, 6)).astype(int)
+plt.xticks(yticks, np.round(infected_start_candidates[xticks], 1))
 plt.yticks(yticks, np.round(lethality_candidates[yticks], 3))
 plt.xlabel("np")
 plt.ylabel("lethality")
-plt.savefig('img/likelihood_is_lethality.png', bbox_inches='tight')
+plt.savefig('img/likelihood_infected-start_lethality.png', bbox_inches='tight')
 plt.close('all')
 
 i, j, k = min_idx[0], min_idx[1], min_idx[2]
 print('\nBest parameters:')
-print('np = %.1f' % n_p_candidates[i])
+print('R0 = %.1f' % r0_candidates[i])
 print('infected start: %.1f' % infected_start_candidates[k])
 print('lethality: %.4f' % lethality_candidates[j])
 pred_len = 40
@@ -94,7 +94,7 @@ infected, infected_confirmed = np.zeros(days_pred.size), np.zeros(days_pred.size
 infected_day = np.zeros(days_pred.size)
 cured, dead = np.zeros(days_pred.size), np.zeros(days_pred.size)
 world = DayDrivenPandemie(n_days=days.size+pred_len,
-                          n_p=n_p_candidates[i],
+                          n_p=r0_candidates[i]/0.15,
                           attack_rate=0.15,
                           detection_rate=0.8,
                           lethality=lethality_candidates[j],
