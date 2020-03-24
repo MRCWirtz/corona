@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.stats import poisson
+from scipy.stats import poisson, skewnorm
 
 
 def logistic_function(x, a, b, c):
@@ -9,7 +9,7 @@ def logistic_function(x, a, b, c):
 class IndividuumDrivenPandemie:
     """ SimplePandemie """
 
-    def __init__(self, n_p=15, attack_rate=0.15, t_contagious=4, t_cured=14, t_death=17, t_confirmed=6, infected_start=10,
+    def __init__(self, n_p=15, attack_rate=0.15, t_contagious=4, t_cured=14, t_death=12, t_confirmed=6, infected_start=10,
                  lethality=0.01, detection_rate=0.8, nbuffer=10000, total_population=83e6):
         self.n_p = n_p
         self.attack_rate = attack_rate
@@ -116,8 +116,9 @@ class IndividuumDrivenPandemie:
 
 class DayDrivenPandemie(object):
 
-    def __init__(self, n_days=100, n_p=15, attack_rate=0.15, t_contagious=4, t_cured=14, t_death=17, t_confirmed=6,
-                 infected_start=10, lethality=0.01, detection_rate=0.8, total_population=83e6, contagious_start=7, confirmed_start=7):
+    def __init__(self, n_days=100, n_p=15, attack_rate=0.15, t_contagious=4, t_cured=14, t_death=20, t_confirmed=6,
+                 infected_start=10, lethality=0.01, detection_rate=0.8, total_population=83e6, contagious_start=7,
+                 confirmed_start=7):
 
         assert infected_start >= contagious_start, "More contagious than infected people!"
         assert infected_start >= confirmed_start, "More confirmed than infected people!"
@@ -146,8 +147,13 @@ class DayDrivenPandemie(object):
         self.dead, self.dead_day, self.cured = 0, 0, 0
         self._assign_timing(infected_start)
 
-    def _count_p_days(self, n, t):
-        p_days = n * poisson.pmf(np.arange(self.n_days - self.day), mu=t)
+    def _count_p_days(self, n, t, pdf='poisson'):
+        if pdf == 'poisson':
+            p_days = n * poisson.pmf(np.arange(self.n_days - self.day), mu=t)
+        elif pdf == 'skewnorm':
+            p_days = n * skewnorm.pdf(np.arange(self.n_days - self.day), a=5, loc=t, scale=15)
+        else:
+            raise NotImplementedError("Density function pdf='%s' not implemented!" % pdf)
         return np.pad(p_days, (self.day, 0), mode='constant')
 
     def _assign_timing(self, n):
@@ -155,7 +161,7 @@ class DayDrivenPandemie(object):
         n_detected = self.detection_rate * (n - n_death) + n_death
         self.contagious_p_day += self._count_p_days(n, self.t_contagious)
         self.cured_p_day += self._count_p_days(n - n_death, self.t_cured)
-        self.death_p_day += self._count_p_days(n_death, self.t_death)
+        self.death_p_day += self._count_p_days(n_death, self.t_death, pdf='skewnorm')
         self.detect_p_day += self._count_p_days(n_detected, self.t_confirmed)
 
     def infect(self):

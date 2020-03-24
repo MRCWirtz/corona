@@ -10,25 +10,25 @@ def likelihood(cases, cases_expect, deaths, deaths_expect):
     return np.sum(likelihood_cases) + np.sum(likelihood_deaths)
 
 
-def run_model(pars, n_sim, n_burn_in=5, day_action=None):
-    # day_action=18 corresponds to Monday (March 16, 2019)
-    np.random.seed(0)
-    if day_action is None:
-        n_burn_in = pars[1]     # run simulation n_burn_in days before data taking
+def run_model(pars, n_sim, n_burn_in=17, day_action=None):
 
     cases, confirmed, dead = np.zeros(n_sim), np.zeros(n_sim), np.zeros(n_sim)
     world = DayDrivenPandemie(n_days=n_sim,
-                              n_p=pars[2]/0.15,
-                              attack_rate=0.15,
-                              detection_rate=0.8,
-                              lethality=pars[0],
-                              infected_start=50,
+                              n_p=pars.get('R0-0', 2.7)/0.15,
+                              attack_rate=pars.get('attack-rate', 0.15),
+                              detection_rate=pars.get('detection-rate', 0.8),
+                              lethality=pars.get('lethality', 0.03),
+                              t_contagious=pars.get('t-contagious', 4),
+                              t_cured=pars.get('t-cured', 14),
+                              t_death=pars.get('t-death', 12),
+                              t_confirmed=pars.get('t-confirmed', 6),
+                              infected_start=pars.get('infected-start', 10),
                               contagious_start=0,
                               confirmed_start=0)
 
-    if day_action is not None:
-        r0_action = pars[1]     # change R0 at day_action
-        world.change_n_p(n_burn_in + day_action, r0_action)
+    if ('R0-1' in pars):
+        n_burn_in = n_burn_in if ('burn-in' not in pars) else pars['burn-in']
+        world.change_n_p(n_burn_in + day_action, pars.get('R0-1')/0.15)  # change R0 at day_action
 
     for i in np.arange(n_sim):
         world.update()
@@ -39,30 +39,10 @@ def run_model(pars, n_sim, n_burn_in=5, day_action=None):
 
 def sample_likelihood(pars, confirmed_day_data, dead_day_data, day_action=None):
 
-    n_sim = len(confirmed_day_data) + 1
-    if day_action is None:
-        n_sim += pars[1]
-    _, confirmed, dead = run_model(pars, n_sim, day_action)
+    n_burn_in = pars['burn-in'] if ('burn-in' in pars) else 17
+    n_sim = len(confirmed_day_data) + n_burn_in + 1
+    _, confirmed, dead = run_model(pars, n_sim, n_burn_in, day_action)
     confirmed_day = np.diff(confirmed)[-len(confirmed_day_data):]
     dead_day = np.diff(dead)[-len(confirmed_day_data):]
 
     return -likelihood(confirmed_day, confirmed_day_data, dead_day, dead_day_data)
-
-
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    import matplotlib as mpl
-    from scipy.optimize import minimize
-    from latex_style import with_latex
-    from plotting import load_data
-    mpl.rcParams.update(with_latex)
-
-    data = load_data()
-    confirmed_data, dead_data = data.to_numpy()[36:, 0] - 16, data.to_numpy()[36:, 1]
-    confirmed_day_data, dead_day_data = np.diff(confirmed_data), np.diff(dead_data)
-    days = np.arange(len(confirmed_data))
-
-    popt = minimize(sample_likelihood, x0=[0.03, 2.7, 1.], method='L-BFGS-B',
-                    bounds=[(0.005, 0.1), (2., 3.5), (0.5, 3.)],
-                    args=(confirmed_day_data, dead_day_data, 18))
-    print(popt)

@@ -9,10 +9,12 @@ from plotting import with_latex
 mpl.rcParams.update(with_latex)
 
 scan_range = {'lethality': np.arange(0.005, 0.055, 0.005),
-              'burn-in': np.arange(2, 11, 1),
-              'R0-0': np.arange(2., 3.1, 0.1),
-              'R0-1': np.arange(1., 2.7, 0.2)}
-digits = {'lethality': 3, 'burn-in': 0, 'R0-0': 1, 'R0-1': 1}
+              'burn-in': np.arange(5, 25, 1),
+              't-death': np.arange(14, 32, 2),
+              'detection-rate': np.arange(0.1, 0.9, 0.1),
+              'R0-0': np.arange(2., 3.2, 0.1),
+              'R0-1': np.arange(0.6, 3.2, 0.2)}
+digits = {'lethality': 3, 'burn-in': 0, 't-death': 0, 'detection-rate': 2, 'R0-0': 1, 'R0-1': 1}
 
 
 data = load_data()
@@ -23,15 +25,22 @@ confirmed_day_data, dead_day_data = np.diff(confirmed_data), np.diff(dead_data)
 days = np.arange(len(confirmed_data))
 
 scan_pars = ['lethality', 'burn-in', 'R0-0']
-day_action = 18 if ('R0-1' in scan_pars) else None
+# scan_pars = ['detection-rate', 'burn-in', 'R0-1']
+# scan_pars = ['t-death', 'burn-in', 'R0-0']
+# scan_pars = ['detection-rate', 'burn-in', 'R0-0']
+# scan_pars = ['lethality', 'R0-0', 'R0-1']
+day_action = 17 if ('R0-1' in scan_pars) else None
+# day_action = 17
 
 lowest_like = np.inf
 likelihoods = np.zeros([len(scan_range[key]) for key in scan_pars])
+pars = {}
 for i, a in enumerate(scan_range[scan_pars[0]]):
     print('%s: %s' % (scan_pars[0], a))
     for j, b in enumerate(scan_range[scan_pars[1]]):
         for k, c in enumerate(scan_range[scan_pars[2]]):
-            like = sample_likelihood([a, b, c], confirmed_day_data, dead_day_data, day_action=day_action)
+            pars.update({scan_pars[0]: a, scan_pars[1]: b, scan_pars[2]: c})
+            like = sample_likelihood(pars, confirmed_day_data, dead_day_data, day_action=day_action)
             likelihoods[i, j, k] = like
             if like < lowest_like:
                 lowest_like = like
@@ -55,13 +64,13 @@ for i, par_i in enumerate(scan_pars):
         plt.close('all')
 
 i, j, k = min_idx[0], min_idx[1], min_idx[2]
-pars_opt = [scan_range[scan_pars[_i]][min_idx[_i]] for _i in range(len(scan_pars))]
+pars_opt = {scan_pars[_i]: scan_range[scan_pars[_i]][min_idx[_i]] for _i in range(len(scan_pars))}
 print('\nBest parameters:')
-for ip, par in enumerate(scan_pars):
-    print('%s: %s' % (par, np.round(pars_opt[ip], digits[par])))
+for par in pars_opt:
+    print('%s: %s' % (par, np.round(pars_opt[par], digits[par])))
 
 pred_len = 21 if ('R0-1' in scan_pars) else 3
-burn_in = pars_opt[scan_pars.index('burn-in')] if ('burn-in' in scan_pars) else 5
+burn_in = pars_opt['burn-in'] if ('burn-in' in scan_pars) else 17
 days_sim = days.size + burn_in + pred_len
 cases, confirmed, dead = run_model(pars_opt, days_sim, n_burn_in=burn_in, day_action=day_action)
 
@@ -84,7 +93,7 @@ axs[1].set_ylabel("Dead")
 axs[1].set_yscale("log")
 axs[0].legend(loc='upper left', fontsize=14)
 axs[1].legend(loc='upper left', fontsize=14)
-plt.savefig('img/fit_data_model.png', bbox_inches='tight')
+plt.savefig('img/fit_model_%s' % '_'.join(scan_pars), bbox_inches='tight')
 plt.close("all")
 
 
@@ -122,5 +131,5 @@ axs[1, 1].set_ylabel("New deaths per day")
 axs[1, 1].legend(loc='upper left', fontsize=14)
 
 plt.tight_layout()
-plt.savefig('img/fit_data_model_predict.png', bbox_inches='tight')
+plt.savefig('img/predict_model_%s.png' % '_'.join(scan_pars), bbox_inches='tight')
 plt.close()
