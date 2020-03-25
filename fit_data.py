@@ -91,12 +91,12 @@ print('\nBest parameters:')
 for par in pars_opt:
     print('%s: %s' % (par, np.round(pars_opt[par], digits[par])))
 
-pred_len = 42 if ('R0-1' in scan_pars) else 3
+pred_len = 62 if ('R0-1' in scan_pars) else 3
 burn_in = pars_opt['burn-in'] if ('burn-in' in scan_pars) else 9
 days_sim = days.size + burn_in + pred_len
 
 pars_opt.update({"R0-2": 0.8})
-cases, confirmed, dead = run_model(pars_opt, days_sim, n_burn_in=burn_in, day_action=day_action)
+cases, confirmed, dead, active = run_model(pars_opt, days_sim, n_burn_in=burn_in, day_action=day_action)
 
 fig, axs = plt.subplots(2, 1)
 fig.set_figheight(10)
@@ -128,11 +128,12 @@ fig, axs = plt.subplots(2, 2)
 fig.set_figheight(9)
 fig.set_figwidth(16)
 
-cases, confirmed, dead = cases[burn_in:], confirmed[burn_in:], dead[burn_in:]
+cases, confirmed, dead, active = cases[burn_in:], confirmed[burn_in:], dead[burn_in:], active[burn_in:]
 days_pred = np.arange(len(cases))
 
 axs[0, 0].plot(days_pred, cases, color='blue', label='total (model)')
 axs[0, 0].plot(days_pred, confirmed, color='k', label='confirmed (model)')
+axs[0, 0].plot(days_pred, active, color='g', label='active (model)')
 axs[0, 0].scatter(days, confirmed_data, marker='o', color='k', label='data (Germany)')
 axs[0, 0].set_ylabel("Cases")
 axs[0, 0].legend(loc='upper left', fontsize=14)

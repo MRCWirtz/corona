@@ -20,7 +20,7 @@ def likelihood(cases, cases_expect, deaths, deaths_expect):
 def run_model(pars, n_sim, n_burn_in=9, day_action=None):
 
     day_action = pars['day-action'] if ('day-action' in pars) else day_action
-    cases, confirmed, dead = np.zeros(n_sim), np.zeros(n_sim), np.zeros(n_sim)
+    cases, confirmed, dead, active = np.zeros(n_sim), np.zeros(n_sim), np.zeros(n_sim), np.zeros(n_sim)
     world = DayDrivenPandemie(n_days=n_sim,
                               n_p=pars.get('R0-0', 2.7)/0.15,
                               attack_rate=pars.get('attack-rate', 0.15),
@@ -44,8 +44,9 @@ def run_model(pars, n_sim, n_burn_in=9, day_action=None):
     for i in np.arange(n_sim):
         world.update()
         cases[i], confirmed[i], dead[i] = world.infected_total, world.confirmed_total, world.dead
+        active[i] = world.infected_total - world.dead - world.cured
 
-    return cases, confirmed, dead
+    return cases, confirmed, dead, active
 
 
 def sample_likelihood(pars, confirmed_day_data, dead_day_data, day_action=None):
@@ -53,7 +54,7 @@ def sample_likelihood(pars, confirmed_day_data, dead_day_data, day_action=None):
     n_burn_in = pars['burn-in'] if ('burn-in' in pars) else 9
     day_action = pars['day-action'] if ('day-action' in pars) else day_action
     n_sim = len(confirmed_day_data) + n_burn_in + 1
-    _, confirmed, dead = run_model(pars, n_sim, n_burn_in, day_action)
+    _, confirmed, dead, _ = run_model(pars, n_sim, n_burn_in, day_action)
     confirmed_day = np.diff(confirmed)[-len(confirmed_day_data):]
     dead_day = np.diff(dead)[-len(confirmed_day_data):]
 
