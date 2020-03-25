@@ -6,10 +6,11 @@ def logistic_function(x, a, b, c):
     return a / (1 + (a / c - 1) * np.exp(-a*b*x))
 
 
-def lognorm(x, mean=20.1, std=11.6):
+def lognorm(x, mean=20.1, std=11.6, epsilon=1e-3):
     """ Log-normal distribution as used for time distribution until death """
     sigma = np.sqrt(np.log((std/mean)**2 + 1))
     mu = np.log(mean) - sigma**2 / 2
+    x = x.astype(float) + epsilon
     norm = 1 / x / sigma / np.sqrt(2*np.pi)
     return norm * np.exp(-(np.log(x)-mu)**2 / 2 / sigma**2)
 
@@ -160,9 +161,8 @@ class DayDrivenPandemie(object):
             p_days = n * poisson.pmf(np.arange(self.n_days - self.day), mu=t)
         elif pdf == 'skewnorm':
             p_days = n * skewnorm.pdf(np.arange(self.n_days - self.day), a=5, loc=t, scale=15)
-        elif pdf == 'lognorm-poisson':
-            _t = np.arange(self.n_days - self.day)
-            p_days = n * np.convolve(poisson.pmf(_t, mu=t), lognorm(_t), mode='full')[:len(_t)]
+        elif pdf == 'lognorm':
+            p_days = n * lognorm(np.arange(self.n_days - self.day))
         else:
             raise NotImplementedError("Density function pdf='%s' not implemented!" % pdf)
         return np.pad(p_days, (self.day, 0), mode='constant')
@@ -172,7 +172,7 @@ class DayDrivenPandemie(object):
         n_detected = self.detection_rate * (n - n_death) + n_death
         self.contagious_p_day += self._count_p_days(n, self.t_contagious)
         self.cured_p_day += self._count_p_days(n - n_death, self.t_cured)
-        self.death_p_day += self._count_p_days(n_death, self.t_death, pdf='skewnorm')
+        self.death_p_day += self._count_p_days(n_death, self.t_death, pdf='lognorm')
         self.detect_p_day += self._count_p_days(n_detected, self.t_confirmed)
 
     def infect(self):
