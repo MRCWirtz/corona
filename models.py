@@ -6,6 +6,14 @@ def logistic_function(x, a, b, c):
     return a / (1 + (a / c - 1) * np.exp(-a*b*x))
 
 
+def lognorm(x, mean=20.1, std=11.6):
+    """ Log-normal distribution as used for time distribution until death """
+    sigma = np.sqrt(np.log((std/mean)**2 + 1))
+    mu = np.log(mean) - sigma**2 / 2
+    norm = 1 / x / sigma / np.sqrt(2*np.pi)
+    return norm * np.exp(-(np.log(x)-mu)**2 / 2 / sigma**2)
+
+
 class IndividuumDrivenPandemie:
     """ SimplePandemie """
 
@@ -152,6 +160,9 @@ class DayDrivenPandemie(object):
             p_days = n * poisson.pmf(np.arange(self.n_days - self.day), mu=t)
         elif pdf == 'skewnorm':
             p_days = n * skewnorm.pdf(np.arange(self.n_days - self.day), a=5, loc=t, scale=15)
+        elif pdf == 'lognorm-poisson':
+            _t = np.arange(self.n_days - self.day)
+            p_days = n * np.convolve(poisson.pmf(_t, mu=t), lognorm(_t), mode='full')[:len(_t)]
         else:
             raise NotImplementedError("Density function pdf='%s' not implemented!" % pdf)
         return np.pad(p_days, (self.day, 0), mode='constant')
