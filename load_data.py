@@ -31,10 +31,6 @@ def load_data(country="Germany"):
 
 
 def load_rki():
-    filename = "rki_data_{}.csv".format(datetime.datetime.now().strftime("%Y-%m-%d"))
-    if os.path.exists(filename):
-        data = pd.read_csv(filename, index_col=0)
-        return data
     # Load data via REST api
     firsttime = True
     offset = 0
@@ -44,13 +40,11 @@ def load_rki():
             raise RuntimeError("HTTP GET request failed")
         data_json = resp.json()
         features = data_json.get("features")
-        for feature in features:
-            attrs = feature.get("attributes")
-            if firsttime:
-                firsttime = False
-                data = pd.DataFrame(attrs, index=[0])
-            else:
-                data = data.append(attrs, ignore_index=True)
+        if firsttime:
+            data = pd.DataFrame([f.get("attributes") for f in features])
+            firsttime = False
+        else:
+            data = data.append([f.get("attributes") for f in features], ignore_index=True)
         if data_json.get("exceededTransferLimit"):
             offset += 2000
         else:
@@ -64,8 +58,7 @@ def load_rki():
     complete_df.index.name = "Meldedatum"
     combined = pd.merge(pivot, complete_df, how="outer", on=["Meldedatum", "confirmed", "deaths"]).groupby("Meldedatum").sum()
     combined = combined.cumsum()
-    combined.to_csv(filename)
-    return data
+    return combined
 
 
 if __name__ == "__main__":
