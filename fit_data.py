@@ -6,11 +6,11 @@ import matplotlib as mpl
 from datetime import datetime
 
 from train_model import sample_likelihood, run_model
-from load_data import load_data
+from load_data import load_rki
 from plotting import add_days, with_latex
 mpl.rcParams.update(with_latex)
 
-scan_range = {'lethality': np.arange(0.005, 0.055, 0.005),
+scan_range = {'lethality': np.arange(0.002, 0.02, 0.002),
               'burn-in': np.arange(5, 20, 1),
               't-death': np.arange(14, 32, 2),
               't-confirmed': [7],
@@ -30,11 +30,11 @@ digits = {
 }
 
 
-data = load_data().to_numpy()[36:, :]
+data = load_rki().iloc[34:-1]
 os.makedirs('img', exist_ok=True)
 
-confirmed_data, dead_data, days_data = data[:, 0].astype(int) - 16, data[:, 1].astype(int), data[:, 2]
-days_data = [datetime.strptime(str(d), '20%y-%m-%d') for d in days_data]
+confirmed_data, dead_data = data.iloc[:, 0].to_numpy().astype(int) - 16, data.iloc[:, 1].to_numpy().astype(int)
+days_data = data.index
 confirmed_day_data, dead_day_data = np.diff(confirmed_data), np.diff(dead_data)
 days = np.arange(len(confirmed_data))
 print(confirmed_data)
@@ -44,7 +44,7 @@ print(confirmed_data)
 # scan_pars = ['detection-rate', 'burn-in', 'R0-1']
 # scan_pars = ['t-death', 'burn-in', 'R0-0']
 # scan_pars = ['detection-rate', 'burn-in', 'R0-0']
-scan_pars = ['t-confirmed', 'R0-0', 'R0-1']
+scan_pars = ['lethality', 'R0-0', 'R0-1']
 day_action = 17 if ('R0-1' in scan_pars) else None
 # day_action = 17
 

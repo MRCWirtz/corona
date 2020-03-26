@@ -37,5 +37,5 @@ def add_days(days, add_days=0):
     days = copy(days)
     for i in range(abs(add_days)):
         idx = 0 if add_days < 0 else len(days)
-        days.insert(idx, days[idx-1] + np.sign(add_days)*timedelta(days=1))
+        days = days.insert(idx, days[idx-1] + np.sign(add_days)*timedelta(days=1))
     return days

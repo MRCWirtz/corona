@@ -29,7 +29,7 @@ def run_model(pars, n_sim, n_burn_in=9, day_action=None):
                               t_contagious=pars.get('t-contagious', 4),
                               t_cured=pars.get('t-cured', 14),
                               t_death=pars.get('t-death', 12),
-                              t_confirmed=pars.get('t-confirmed', 6),
+                              t_confirmed=pars.get('t-confirmed', 7),
                               infected_start=pars.get('infected-start', 30),
                               contagious_start=0,
                               confirmed_start=0)
