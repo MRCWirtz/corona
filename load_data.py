@@ -30,12 +30,12 @@ def load_data(country="Germany"):
     return data
 
 
-def load_rki():
+def load_rki(raw=False):
     # Load data via REST api
     firsttime = True
     offset = 0
     while True:
-        resp = requests.get("https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_COVID19/FeatureServer/0/query?where=1%3D1&outFields=Bundesland,Landkreis,Altersgruppe,Geschlecht,AnzahlFall,AnzahlTodesfall,Meldedatum,Datenstand,NeuerFall,NeuerTodesfall&returnGeometry=false&outSR=4326&f=json&resultOffset={}".format(offset))
+        resp = requests.get("https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_COVID19/FeatureServer/0/query?where=1%3D1&outFields=Bundesland,Landkreis,Altersgruppe,Geschlecht,AnzahlFall,AnzahlTodesfall,Meldedatum,Datenstand,NeuerFall,NeuerTodesfall,Inzidenz&returnGeometry=false&outSR=4326&f=json&resultOffset={}".format(offset))
         if not resp.status_code == requests.codes.ok:
             raise RuntimeError("HTTP GET request failed")
         data_json = resp.json()
@@ -51,6 +51,8 @@ def load_rki():
             break
     data.loc[data.NeuerTodesfall == -9, "NeuerTodesfall"] = 0
     data.Meldedatum = pd.to_datetime(data.Meldedatum, unit="ms")
+    if raw:
+        return data
     pivot = pd.pivot_table(data, values=["AnzahlFall", "AnzahlTodesfall"], index="Meldedatum", aggfunc=np.sum)
     pivot = pivot.rename(columns={"AnzahlFall": "confirmed", "AnzahlTodesfall": "deaths"}, index={"Meldedatum": "dates"})
     daylist = get_day_list(pivot.index[0].to_pydatetime(), pivot.index[-1].to_pydatetime())
