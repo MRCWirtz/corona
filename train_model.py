@@ -25,7 +25,7 @@ def run_model(pars, n_sim, n_burn_in=9, day_action=None):
                               n_p=pars.get('R0-0', 2.7)/0.15,
                               attack_rate=pars.get('attack-rate', 0.15),
                               detection_rate=pars.get('detection-rate', 0.6),
-                              lethality=pars.get('lethality', 0.01),
+                              lethality=pars.get('lethality', 0.012),
                               t_contagious=pars.get('t-contagious', 4),
                               t_cured=pars.get('t-cured', 14),
                               t_death=pars.get('t-death', 12),

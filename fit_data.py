@@ -1,11 +1,13 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import dates
 import matplotlib as mpl
+from datetime import datetime
 
 from train_model import sample_likelihood, run_model
 from load_data import load_data
-from plotting import with_latex
+from plotting import add_days, with_latex
 mpl.rcParams.update(with_latex)
 
 scan_range = {'lethality': np.arange(0.005, 0.055, 0.005),
@@ -28,10 +30,11 @@ digits = {
 }
 
 
-data = load_data()
+data = load_data().to_numpy()[36:, :]
 os.makedirs('img', exist_ok=True)
 
-confirmed_data, dead_data = data.to_numpy()[36:, 0] - 16, data.to_numpy()[36:, 1]
+confirmed_data, dead_data, days_data = data[:, 0].astype(int) - 16, data[:, 1].astype(int), data[:, 2]
+days_data = [datetime.strptime(str(d), '20%y-%m-%d') for d in days_data]
 confirmed_day_data, dead_day_data = np.diff(confirmed_data), np.diff(dead_data)
 days = np.arange(len(confirmed_data))
 print(confirmed_data)
@@ -83,6 +86,8 @@ for i, par_i in enumerate(scan_pars):
             plt.yticks(yticks, np.round(scan_range[par_j][yticks],  digits[par_j]))
         plt.xlabel('%s' % par_i)
         plt.ylabel('%s' % par_j)
+
+plt.subplots_adjust(wspace=0.4, hspace=0.4)
 plt.savefig('img/likelihood_{}.png'.format('_'.join(scan_pars)), bbox_inches='tight')
 
 i, j, k = min_idx[0], min_idx[1], min_idx[2]
@@ -91,11 +96,9 @@ print('\nBest parameters:')
 for par in pars_opt:
     print('%s: %s' % (par, np.round(pars_opt[par], digits[par])))
 
-pred_len = 62 if ('R0-1' in scan_pars) else 3
 burn_in = pars_opt['burn-in'] if ('burn-in' in scan_pars) else 9
-days_sim = days.size + burn_in + pred_len
+days_sim = days.size + burn_in
 
-pars_opt.update({"R0-2": 0.8})
 cases, confirmed, dead, active = run_model(pars_opt, days_sim, n_burn_in=burn_in, day_action=day_action)
 
 fig, axs = plt.subplots(2, 1)
@@ -105,7 +108,7 @@ for ax in axs:
     ax.set_xlabel("days")
 
 axs[0].scatter(burn_in + days, confirmed_data, marker='o', color='k', label='data (germany)')
-axs[0].plot(np.arange(days_sim)[:-pred_len], confirmed[:-pred_len], color='k', label='model')
+axs[0].plot(np.arange(days_sim), confirmed, color='k', label='model')
 axs[0].legend(loc="upper left")
 axs[0].set_ylabel("Confirmed Cases")
 axs[0].set_yscale("log")
@@ -113,7 +116,7 @@ axs[0].set_ylim([0.1, 1.5*np.max(confirmed_data)])
 axs[0].legend(loc='upper left', fontsize=14)
 
 axs[1].scatter(burn_in + days, dead_data, marker='o', color='k', label='data (germany)')
-axs[1].plot(np.arange(days_sim)[:-pred_len], dead[:-pred_len], color='red', label='model')
+axs[1].plot(np.arange(days_sim), dead, color='red', label='model')
 axs[1].legend(loc="upper left")
 axs[1].set_ylabel("Dead")
 axs[1].set_yscale("log")
@@ -128,34 +131,57 @@ fig, axs = plt.subplots(2, 2)
 fig.set_figheight(9)
 fig.set_figwidth(16)
 
-cases, confirmed, dead, active = cases[burn_in:], confirmed[burn_in:], dead[burn_in:], active[burn_in:]
-days_pred = np.arange(len(cases))
+pred_len = 42 if ('R0-1' in scan_pars) else 3
+days_sim += pred_len
+linestyles = ['dotted', 'solid', 'dashed']
+for i, r0 in enumerate([0.8, 1, 1.2]):
+    pars_opt.update({"R0-2": r0})
+    cases, confirmed, dead, active = run_model(pars_opt, days_sim, n_burn_in=burn_in, day_action=day_action)
+    cases, confirmed, dead, active = cases[burn_in:], confirmed[burn_in:], dead[burn_in:], active[burn_in:]
+    days_pred = add_days(days_data, len(cases)-len(days_data))
+    axs[0, 0].plot_date(days_pred, confirmed, marker='None', color='k', ls=linestyles[i], label=r'Model, R(0)$_2$ = %s' % r0)
+    axs[0, 1].plot_date(days_pred[1:], np.diff(confirmed), marker='None', color='k', ls=linestyles[i], label=r'Model, R(0)$_2$ = %s' % r0)
+    axs[1, 0].plot_date(days_pred, dead, marker='None', color='r', ls=linestyles[i], label=r'Model, R(0)$_2$ = %s' % r0)
+    axs[1, 1].plot_date(days_pred[1:], np.diff(dead), marker='None', color='r', ls=linestyles[i], label=r'Model, R(0)$_2$ = %s' % r0)
 
-axs[0, 0].plot(days_pred, cases, color='blue', label='total (model)')
-axs[0, 0].plot(days_pred, confirmed, color='k', label='confirmed (model)')
-axs[0, 0].plot(days_pred, active, color='g', label='active (model)')
-axs[0, 0].scatter(days, confirmed_data, marker='o', color='k', label='data (Germany)')
+axs[0, 0].xaxis.set_minor_locator(dates.DayLocator())
+axs[0, 0].xaxis.set_major_locator(dates.MonthLocator())
+axs[0, 0].xaxis.set_major_formatter(dates.DateFormatter('%b'))
+axs[0, 0].plot_date(days_data, confirmed_data, marker='o', color='k', label='Data (Germany)')
 axs[0, 0].set_ylabel("Cases")
-axs[0, 0].legend(loc='upper left', fontsize=14)
+axs[0, 0].set_ylim(0, 200000)
+axs[0, 0].legend(loc='upper left', fontsize=16)
+axs[0, 0].grid(True)
 
-axs[1, 0].plot(days_pred, dead, color='r', label='model')
-axs[1, 0].scatter(days, dead_data, marker='o', color='k', label='data (Germany)')
-axs[1, 0].set_xlabel("Days")
-axs[1, 0].set_ylabel("Deaths")
-axs[1, 0].legend(loc='upper left', fontsize=14)
-
-axs[0, 1].plot(days_pred[1:], np.diff(cases), color='b', ls="dashed", label='total (model)')
-axs[0, 1].plot(days_pred[1:], np.diff(confirmed), color='k', ls="dashed", label='confirmed (model)')
-axs[0, 1].scatter(days[1:], confirmed_day_data, marker='o', color='k', label='data (Germany)')
+axs[0, 1].xaxis.set_minor_locator(dates.DayLocator())
+axs[0, 1].xaxis.set_major_locator(dates.MonthLocator())
+axs[0, 1].xaxis.set_major_formatter(dates.DateFormatter('%b'))
+axs[0, 1].plot_date(days_data[1:], confirmed_day_data, marker='o', color='k', label='Data (Germany)')
 axs[0, 1].set_ylabel("New cases per day")
-axs[0, 1].legend(loc='upper left', fontsize=14)
+axs[0, 1].set_ylim(0, 10000)
+axs[0, 1].legend(loc='upper left', fontsize=16)
+axs[0, 1].grid(True)
 
-axs[1, 1].plot(days_pred[1:], np.diff(dead), color='r', ls="dashed", label='model')
-axs[1, 1].scatter(days[1:], dead_day_data, marker='o', color='k', label='data (Germany)')
+axs[1, 0].xaxis.set_minor_locator(dates.DayLocator())
+axs[1, 0].xaxis.set_major_locator(dates.MonthLocator())
+axs[1, 0].xaxis.set_major_formatter(dates.DateFormatter('%b'))
+axs[1, 0].plot_date(days_data, dead_data, marker='o', color='k', label='Data (Germany)')
+axs[1, 0].set_xlabel("Time")
+axs[1, 0].set_ylabel("Deaths")
+axs[1, 0].set_ylim(0, 2500)
+axs[1, 0].legend(loc='upper left', fontsize=16)
+axs[1, 0].grid(True)
+
+axs[1, 1].xaxis.set_minor_locator(dates.DayLocator())
+axs[1, 1].xaxis.set_major_locator(dates.MonthLocator())
+axs[1, 1].xaxis.set_major_formatter(dates.DateFormatter('%b'))
+axs[1, 1].plot_date(days_data[1:], dead_day_data, marker='o', color='k', label='Data (Germany)')
 axs[1, 1].legend(loc="upper left")
-axs[1, 1].set_xlabel("Days")
+axs[1, 1].set_xlabel("Time")
 axs[1, 1].set_ylabel("New deaths per day")
-axs[1, 1].legend(loc='upper left', fontsize=14)
+axs[1, 1].set_ylim(0, 100)
+axs[1, 1].legend(loc='upper left', fontsize=16)
+axs[1, 1].grid(True)
 
 plt.tight_layout()
 plt.savefig('img/predict_model_%s.png' % '_'.join(scan_pars), bbox_inches='tight')

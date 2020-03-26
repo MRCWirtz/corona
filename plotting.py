@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 import numpy as np
+from copy import copy
+from datetime import timedelta
 
 
 def figsize(scale):
@@ -28,3 +30,12 @@ with_latex = {
     "ytick.labelsize": 15,
     "figure.figsize": figsize(2),
     "legend.fancybox": False}
+
+
+def add_days(days, add_days=0):
+    """ Add number of abs(add_days) days to existing datetime Object, if negative in the beginning """
+    days = copy(days)
+    for i in range(abs(add_days)):
+        idx = 0 if add_days < 0 else len(days)
+        days.insert(idx, days[idx-1] + np.sign(add_days)*timedelta(days=1))
+    return days
