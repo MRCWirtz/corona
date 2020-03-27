@@ -16,7 +16,8 @@ def get_day_list(first, last):
             return days
 
 
-def load_data(country="Germany"):
+def load_jhu(country="Germany"):
+    """ Get data from Johns Hopkins University (CSSE) over thirdparty Github repository """
     path = "thirdparty/covid-19/data/"
     data = pd.read_csv(path + "countries-aggregated.csv")
     data_country = data[data["Country"] == country].fillna(0)
@@ -31,20 +32,17 @@ def load_data(country="Germany"):
 
 
 def load_rki(raw=False):
+    """ Get data from Robert Koch Institut (unprepared) """
     # Load data via REST api
-    firsttime = True
     offset = 0
+    data = pd.DataFrame()
     while True:
         resp = requests.get("https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_COVID19/FeatureServer/0/query?where=1%3D1&outFields=Bundesland,Landkreis,Altersgruppe,Geschlecht,AnzahlFall,AnzahlTodesfall,Meldedatum,Datenstand,NeuerFall,NeuerTodesfall,Inzidenz&returnGeometry=false&outSR=4326&f=json&resultOffset={}".format(offset))
         if not resp.status_code == requests.codes.ok:
             raise RuntimeError("HTTP GET request failed")
         data_json = resp.json()
         features = data_json.get("features")
-        if firsttime:
-            data = pd.DataFrame([f.get("attributes") for f in features])
-            firsttime = False
-        else:
-            data = data.append([f.get("attributes") for f in features], ignore_index=True)
+        data = data.append([f.get("attributes") for f in features], ignore_index=True)
         if data_json.get("exceededTransferLimit"):
             offset += 2000
         else:
