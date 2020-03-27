@@ -6,7 +6,7 @@ import matplotlib as mpl
 from datetime import datetime
 
 from train_model import sample_likelihood, run_model
-from load_data import load_rki
+from load_data import load_jhu, load_rki
 from plotting import add_days, with_latex
 # mpl.rcParams.update(with_latex)
 
@@ -29,15 +29,19 @@ digits = {
     't-confirmed': 0,
 }
 
-
-data = load_rki().iloc[34:-1]
+data_id = "rki"
 os.makedirs('img', exist_ok=True)
-
+if data_id == "rki":
+    data = load_rki().iloc[34:-1]
+elif data_id == "jhu":
+    data = load_jhu().iloc[36:]
+else:
+    raise NotImplementedError("Data key %s not implemented!" % data_id)
 confirmed_data, dead_data = data.iloc[:, 0].to_numpy().astype(int) - 16, data.iloc[:, 1].to_numpy().astype(int)
 days_data = data.index
 confirmed_day_data, dead_day_data = np.diff(confirmed_data), np.diff(dead_data)
 days = np.arange(len(confirmed_data))
-print(confirmed_data)
+print(days_data)
 
 # scan_pars = ['burn-in', 'infected-start', 'R0-0']
 # scan_pars = ['lethality', 'detection-rate', 'burn-in']
@@ -88,7 +92,7 @@ for i, par_i in enumerate(scan_pars):
         plt.ylabel('%s' % par_j)
 
 plt.subplots_adjust(wspace=0.4, hspace=0.4)
-plt.savefig('img/likelihood.png', bbox_inches='tight')
+plt.savefig('img/likelihood_%s.png' % data_id, bbox_inches='tight')
 
 i, j, k = min_idx[0], min_idx[1], min_idx[2]
 pars_opt = {scan_pars[_i]: scan_range[scan_pars[_i]][min_idx[_i]] for _i in range(len(scan_pars))}
@@ -122,7 +126,7 @@ axs[1].set_ylabel("Dead")
 axs[1].set_yscale("log")
 axs[1].set_ylim([0.01, 1.5*np.max(dead_data)])
 axs[1].legend()
-plt.savefig('img/fit_model', bbox_inches='tight')
+plt.savefig('img/fit_model_%s.png' % data_id, bbox_inches='tight')
 plt.close("all")
 
 
@@ -188,5 +192,5 @@ axs[1, 1].legend()
 axs[1, 1].grid(True)
 
 plt.tight_layout()
-plt.savefig('img/predict_model', bbox_inches='tight')
+plt.savefig('img/predict_model_%s.png' % data_id, bbox_inches='tight')
 plt.close()

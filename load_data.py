@@ -23,10 +23,10 @@ def load_jhu(country="Germany"):
     data_country = data[data["Country"] == country].fillna(0)
     confirmed_country = data_country.Confirmed.to_numpy()
     deaths_country = data_country.Deaths.to_numpy()
-    data_country = data_country.Date.to_numpy()
     data = pd.DataFrame(
-        data=np.stack([confirmed_country, deaths_country, data_country], axis=1),
-        columns=["confirmed", "deaths", "dates"],
+        index=pd.to_datetime(data_country.Date),
+        data=np.stack([confirmed_country, deaths_country], axis=1),
+        columns=["confirmed", "deaths"],
     )
     return data
 
