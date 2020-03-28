@@ -37,7 +37,7 @@ def load_rki(raw=False):
     offset = 0
     data = pd.DataFrame()
     while True:
-        resp = requests.get("https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_COVID19/FeatureServer/0/query?where=1%3D1&outFields=Bundesland,Landkreis,Altersgruppe,Geschlecht,AnzahlFall,AnzahlTodesfall,Meldedatum,Datenstand,NeuerFall,NeuerTodesfall,Inzidenz&returnGeometry=false&outSR=4326&f=json&resultOffset={}".format(offset))
+        resp = requests.get("https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_COVID19/FeatureServer/0/query?where=1%3D1&outFields=Bundesland,Landkreis,Altersgruppe,Geschlecht,AnzahlFall,AnzahlTodesfall,Meldedatum,Datenstand,NeuerFall,NeuerTodesfall&returnGeometry=false&outSR=4326&f=json&resultOffset={}".format(offset))
         if not resp.status_code == requests.codes.ok:
             raise RuntimeError("HTTP GET request failed")
         data_json = resp.json()
@@ -47,6 +47,8 @@ def load_rki(raw=False):
             offset += 2000
         else:
             break
+    filename = "raw_rki_data_{}.csv".format(pd.to_datetime(data.Datenstand[0]).strftime("%Y-%m-%d"))
+    data.to_csv(filename)
     data.loc[data.NeuerTodesfall == -9, "NeuerTodesfall"] = 0
     data.Meldedatum = pd.to_datetime(data.Meldedatum, unit="ms")
     if raw:
