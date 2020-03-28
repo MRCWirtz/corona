@@ -184,16 +184,17 @@ class DayDrivenPandemie(object):
         self.infected_total += self.infected_day
         self._assign_timing(self.infected_day)
 
-    def update(self):
-        if str(self.day) in self.n_p_steps:
-            self.n_p = self.n_p_steps[str(self.day)]
-        self.infect()
-        self.infected -= (self.cured_p_day[self.day] + self.death_p_day[self.day])
-        self.contagious += self.contagious_p_day[self.day] - self.cured_p_day[self.day] - self.death_p_day[self.day]
-        self.cured += self.cured_p_day[self.day]
-        self.dead += self.death_p_day[self.day]
-        self.confirmed_total += self.detect_p_day[self.day]
-        self.day += 1
+    def update(self, n_sim=1):
+        for i in range(n_sim):
+            if str(self.day) in self.n_p_steps:
+                self.n_p = self.n_p_steps[str(self.day)]
+            self.infect()
+            self.infected -= (self.cured_p_day[self.day] + self.death_p_day[self.day])
+            self.contagious += self.contagious_p_day[self.day] - self.cured_p_day[self.day] - self.death_p_day[self.day]
+            self.cured += self.cured_p_day[self.day]
+            self.dead += self.death_p_day[self.day]
+            self.confirmed_total += self.detect_p_day[self.day]
+            self.day += 1
 
     def change_n_p(self, day, n_p):
         self.n_p_steps.update({str(day): n_p})
