@@ -1,5 +1,5 @@
 # corona
-Modelling Corona expansion in Germany. Prediction with the current max likelihood guesses for RO before and after the measures:
+Modelling Corona expansion in Germany. Prediction with the current max likelihood guesses for R0 before and after the measures:
 
 ![img](img/predict_model.png)
 
