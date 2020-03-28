@@ -5,11 +5,11 @@ import matplotlib as mpl
 from scipy.optimize import curve_fit
 
 import models
-from load_data import load_data
+from load_data import load_jhu
 from plotting import with_latex
 mpl.rcParams.update(with_latex)
 
-data = load_data()
+data = load_jhu()
 os.makedirs('img', exist_ok=True)
 
 confirmed = data.to_numpy()[36:, 0] - 16
