@@ -8,10 +8,7 @@ url = "https://diviexchange.z6.web.core.windows.net/report.html"
 resp = requests.get(url)
 soup = BeautifulSoup(resp.text, "lxml")
 table_header = soup.find("thead")
-columns = [
-    elem.text
-    for elem in table_header.find("tr").find_all("th")
-][1:]
+columns = [elem.text for elem in table_header.find("tr").find_all("th")][1:]
 columns[10] = "Anzahl ECMO-Faelle pro Jahr"  # take correct encoding
 indexname = table_header.find_all("tr")[1].find("th").text
 rows = soup.find("tbody").find_all("tr")
@@ -21,4 +18,4 @@ for row in rows:
     data.append([int(r.text) for r in row.find_all("td")])
 df = pd.DataFrame(data, index=indeces, columns=columns)
 df.index.name = indexname
-df.to_csv("data_divi_{}.csv".format(datetime.datetime.now().strftime("%Y-%m-%d")))
+df.to_csv("data_divi_{}.csv".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")))
