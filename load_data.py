@@ -47,7 +47,7 @@ def load_rki(raw=False):
             offset += 2000
         else:
             break
-    filename = "raw_rki_data_{}.csv".format(pd.to_datetime(data.Datenstand[0], dayfirst=True).strftime("%Y-%m-%d"))
+    filename = "raw_rki_data_{}.csv".format(pd.to_datetime(data.Datenstand[0], dayfirst=True, format="%d.%m.%Y, %H:%M Uhr").strftime("%Y-%m-%d"))
     data.to_csv(filename)
     data.loc[data.NeuerTodesfall == -9, "NeuerTodesfall"] = 0
     data.Meldedatum = pd.to_datetime(data.Meldedatum, unit="ms")
