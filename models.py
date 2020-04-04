@@ -130,10 +130,9 @@ class IndividuumDrivenPandemie:
 class DayDrivenPandemie(object):
 
     def __init__(self, n_days=100, n_p=15, attack_rate=0.15, t_contagious=4, t_cured=14, t_death=20, t_confirmed=6,
-                 infected_start=10, lethality=0.01, detection_rate=0.8, total_population=83e6, contagious_start=7,
-                 confirmed_start=7, death_pdf='skewnorm'):
+                 infected_start=10, lethality=0.01, detection_rate=0.8, total_population=83e6, confirmed_start=0,
+                 death_pdf='skewnorm'):
 
-        assert infected_start >= contagious_start, "More contagious than infected people!"
         assert infected_start >= confirmed_start, "More confirmed than infected people!"
         self.n_p = n_p
         self.attack_rate = attack_rate
@@ -156,7 +155,7 @@ class DayDrivenPandemie(object):
         self.cured_p_day = np.zeros(n_days)
         self.detect_p_day = np.zeros(n_days)
 
-        self.infected, self.contagious = infected_start, contagious_start
+        self.infected, self.contagious = infected_start, 0
         self.infected_total, self.confirmed_total = infected_start, confirmed_start
         self.infected_day = 0
         self.dead, self.dead_day, self.cured = 0, 0, 0
@@ -182,7 +181,7 @@ class DayDrivenPandemie(object):
         self.detect_p_day += self._count_p_days(n_detected, self.t_confirmed)
 
     def infect(self):
-        immune = self.infected + self.cured
+        immune = self.infected_total
         n_eff = self.n_p * (self.total_population - immune) / self.total_population
         self.infected_day = self.contagious_p_day[self.day] * n_eff*self.attack_rate
         # self.infected_day = np.sum(np.random.poisson(n_eff*self.attack_rate, size=self.contagious_p_day[self.day]))
