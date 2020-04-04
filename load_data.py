@@ -1,8 +1,6 @@
 import numpy as np
-from copy import copy
 import pandas as pd
 import requests
-import os
 import datetime
 
 
@@ -11,7 +9,7 @@ def get_day_list(first, last):
     i = 0
     while True:
         days.append(first + datetime.timedelta(days=i))
-        i+=1
+        i += 1
         if days[-1] == last:
             return days
 

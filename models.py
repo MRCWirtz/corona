@@ -2,7 +2,11 @@ import numpy as np
 from scipy.stats import poisson, skewnorm
 
 
-def logistic_function(x, a, b, c):
+def logistic_function(x, a, b, c, d):
+    return (a - b) / (1 + np.exp(d*(x - c))) + b
+
+
+def logistic_function_growth(x, a, b, c):
     return a / (1 + (a / c - 1) * np.exp(-a*b*x))
 
 
@@ -127,7 +131,7 @@ class DayDrivenPandemie(object):
 
     def __init__(self, n_days=100, n_p=15, attack_rate=0.15, t_contagious=4, t_cured=14, t_death=20, t_confirmed=6,
                  infected_start=10, lethality=0.01, detection_rate=0.8, total_population=83e6, contagious_start=7,
-                 confirmed_start=7):
+                 confirmed_start=7, death_pdf='skewnorm'):
 
         assert infected_start >= contagious_start, "More contagious than infected people!"
         assert infected_start >= confirmed_start, "More confirmed than infected people!"
@@ -138,8 +142,10 @@ class DayDrivenPandemie(object):
         self.t_contagious = t_contagious
         self.t_cured = t_cured
         self.t_death = t_death
+        self.death_pdf = death_pdf
         self.t_confirmed = t_confirmed
         self.total_population = total_population
+        # print('lethality: %s \tR0: %s \tdetection_rate: %s' % (lethality, attack_rate*n_p, detection_rate))
 
         self.n_p_steps = {}
 
@@ -172,7 +178,7 @@ class DayDrivenPandemie(object):
         n_detected = self.detection_rate * (n - n_death) + n_death
         self.contagious_p_day += self._count_p_days(n, self.t_contagious)
         self.cured_p_day += self._count_p_days(n - n_death, self.t_cured)
-        self.death_p_day += self._count_p_days(n_death, self.t_death, pdf='lognorm')
+        self.death_p_day += self._count_p_days(n_death, self.t_death, pdf=self.death_pdf)
         self.detect_p_day += self._count_p_days(n_detected, self.t_confirmed)
 
     def infect(self):

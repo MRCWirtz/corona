@@ -1,28 +1,7 @@
 import numpy as np
 from scipy.stats import poisson
-from models import DayDrivenPandemie
-
-
-defaults = {
-    'attack-rate': 0.15,
-    'R0-0': 2.7,
-    'detection-rate': 0.5,
-    'lethality': 0.015,
-    'burn-in': 13,
-    'day-action-1': 17,
-    'day-action-2': 24,
-    't-contagious': 4,
-    't-cured': 14,
-    't-death': 12,
-    't-confirmed': 7,
-    'infected-start': 30,
-    'contagious-start': 0,
-    'confirmed-start': 0
-}
-
-
-def get_par(pars, key):
-    return pars[key] if (key in pars) else defaults[key]
+from models import logistic_function, DayDrivenPandemie
+from parameters import defaults
 
 
 def likelihood(cases, cases_expect, deaths, deaths_expect, eps=1e-11):
@@ -30,13 +9,23 @@ def likelihood(cases, cases_expect, deaths, deaths_expect, eps=1e-11):
     # get probability mass function and catch floating precision
     likelihood_cases = np.log10(np.clip(poisson.pmf(cases_expect, mu=cases), a_min=eps, a_max=None))
     likelihood_deaths = np.log10(np.clip(poisson.pmf(deaths_expect, mu=deaths), a_min=eps, a_max=None))
-    _likelihood = np.sum(likelihood_cases) + np.sum(likelihood_deaths)
+    _likelihood = 0.2 * np.sum(likelihood_cases) + np.sum(likelihood_deaths)
 
     likelihood_cases_0 = np.log10(np.clip(poisson.pmf(cases_expect, mu=cases_expect), a_min=eps, a_max=None))
     likelihood_deaths_0 = np.log10(np.clip(poisson.pmf(deaths_expect, mu=deaths_expect), a_min=eps, a_max=None))
-    _likelihood_0 = np.sum(likelihood_cases_0) + np.sum(likelihood_deaths_0)
+    _likelihood_0 = 0.2 * np.sum(likelihood_cases_0) + np.sum(likelihood_deaths_0)
 
     return 2 * (_likelihood - _likelihood_0)
+
+
+def chi2_loss(cases, cases_expect, deaths, deaths_expect, eps=1e-11):
+
+    # get probability mass function and catch floating precision
+    mask_cases = cases_expect >= 1
+    chi2_cases = np.mean((np.log10(cases[mask_cases]) - np.log10(cases_expect[mask_cases]))**2)
+    mask_deaths = deaths_expect >= 1
+    chi2_deaths = np.mean((np.log10(deaths[mask_deaths]) - np.log10(deaths_expect[mask_deaths]))**2)
+    return chi2_cases + chi2_deaths
 
 
 def likelihood_cum(cases, cases_expect, deaths, deaths_expect, eps=1e-11):
@@ -58,8 +47,9 @@ def likelihood_cum(cases, cases_expect, deaths, deaths_expect, eps=1e-11):
 def run_model(pars, n_sim):
 
     n_burn_in = pars['burn-in'] if ('burn-in' in pars) else defaults['burn-in']
+    R0 = pars.get('R0-0', defaults['R0-0'])
     world = DayDrivenPandemie(n_days=n_sim+n_burn_in,
-                              n_p=pars.get('R0-0', defaults['R0-0'])/defaults['attack-rate'],
+                              n_p=R0/defaults['attack-rate'],
                               attack_rate=pars.get('attack-rate', defaults['attack-rate']),
                               detection_rate=pars.get('detection-rate', defaults['detection-rate']),
                               lethality=pars.get('lethality', defaults['lethality']),
@@ -83,6 +73,9 @@ def run_model(pars, n_sim):
     # Run the model
     cases, confirmed, dead, active = np.zeros(n_sim), np.zeros(n_sim), np.zeros(n_sim), np.zeros(n_sim)
     for i in np.arange(n_sim):
+        if ('R0-lo-A' in pars) or ('R0-lo-B' in pars) or ('R0-lo-C' in pars):
+            _R0 = logistic_function(i, R0, pars.get('R0-lo-A'), pars.get('R0-lo-B'), pars.get('R0-lo-C'))
+            world.change_n_p(n_burn_in + i, _R0/defaults['attack-rate'])
         world.update()
         cases[i], confirmed[i], dead[i] = world.infected_total, world.confirmed_total, world.dead
         active[i] = world.infected_total - world.dead - world.cured
@@ -90,14 +83,14 @@ def run_model(pars, n_sim):
     return cases, confirmed, dead, active
 
 
-def sample_likelihood(pars, confirmed_data, dead_data, cumulative=True):
+def sample_likelihood(pars, confirmed_data, dead_data, loss='chi2'):
 
     n_sim = max(len(confirmed_data), len(dead_data))
     _, confirmed, dead, _ = run_model(pars, n_sim)
     # If 'confirmed_data' and 'dead_dat' have different sizes, the last days will be discarded
     confirmed, dead = confirmed[:len(confirmed_data)], dead[:len(dead_data)]
 
-    if cumulative:
-        return -likelihood_cum(confirmed, confirmed_data, dead, dead_data)
+    if loss == 'chi2':
+        return chi2_loss(confirmed, confirmed_data, dead, dead_data)
     else:
         return -likelihood(np.diff(confirmed), np.diff(confirmed_data), np.diff(dead), np.diff(dead_data))
