@@ -209,28 +209,29 @@ class DayDrivenPandemie(object):
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     import matplotlib as mpl
-    from latex_style import with_latex
+    from plotting import with_latex
     mpl.rcParams.update(with_latex)
 
-    days = np.arange(42)
-    infected, infected_confirmed = np.zeros(days.size), np.zeros(days.size)
+    days = np.arange(100)
+    infected, confirmed_total = np.zeros(days.size), np.zeros(days.size)
     infected_day, infected_day_confirmed = np.zeros(days.size), np.zeros(days.size)
     cured, dead = np.zeros(days.size), np.zeros(days.size)
-    world = DayDrivenPandemie(lethality=0.2, detection_rate=0.8)
+    world = DayDrivenPandemie(n_days=len(days), lethality=0.2, detection_rate=0.8)
     for i in days:
         world.update()
-        infected[i], infected_confirmed[i] = world.infected_total, world.infected_total_confirmed
-        infected_day[i], infected_day_confirmed[i] = world.infected_day, world.infected_day_confirmed
+        infected[i], confirmed_total[i] = world.infected_total, world.confirmed_total
+        infected_day[i] = world.infected_day
         cured[i], dead[i] = world.cured, world.dead
+    infected_day_confirmed[1:] = np.diff(confirmed_total)
 
     plt.plot(days, infected, color='blue', label='infected (total)')
-    plt.plot(days, infected_confirmed, color='blue', ls='dashed', label='infected (confirmed)')
-    plt.plot(days, infected_day, color='k', label='new infections (total)')
-    plt.plot(days, infected_day_confirmed, color='k', ls='dashed', label='new infections (confirmed)')
+    plt.plot(days, confirmed_total, color='blue', ls='dashed', label='confirmed (total)')
+    plt.plot(days, infected_day, color='k', label='new infections')
+    plt.plot(days, infected_day_confirmed, color='k', ls='dashed', label='new confirmed')
     plt.plot(days, dead, color='red', label='dead')
     plt.plot(days, cured, color='green', label='cured')
     plt.legend(loc='upper left', fontsize=14)
-    plt.yscale('log')
+    # plt.yscale('log')
     plt.xlabel("days")
     plt.ylabel("counts")
     plt.savefig('img/first_model_day.png', bbox_inches='tight')
