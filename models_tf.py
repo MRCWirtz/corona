@@ -5,14 +5,15 @@ import tensorflow_probability as tfp
 
 class DayDrivenPandemie(object):
 
-    def __init__(self, n_days=100, n_p=15, attack_rate=0.15, t_contagious=4, t_cured=14, t_death=20, t_confirmed=6,
+    def __init__(self, n_days=100, r0=2.25, attack_rate=0.15, t_contagious=4, t_cured=14, t_death=20, t_confirmed=6,
                  infected_start=10, lethality=0.01, detection_rate=0.8, total_population=83e6, confirmed_start=0,
-                 death_pdf='skewnorm'):
+                 burn_in=14, death_pdf='skewnorm'):
 
         assert infected_start >= confirmed_start, "More confirmed than infected people!"
-        self.n_p = n_p
+        self.r0 = tf.Variable(r0, trainable=True, dtype=tf.float32)
+        self.infected_start = tf.Variable(infected_start, trainable=True, dtype=tf.float32)
         self.attack_rate = attack_rate
-        self.lethality = lethality
+        self.lethality = tf.Variable(lethality, trainable=True, dtype=tf.float32)
         self.detection_rate = detection_rate
         self.t_confirmed = tfp.distributions.Poisson(t_confirmed)
         self.t_death = tfp.distributions.Poisson(t_death)
@@ -24,7 +25,7 @@ class DayDrivenPandemie(object):
         self.n_p_steps = {}
 
         self.day = 0
-        self.n_days = n_days
+        self.n_days = n_days + burn_in
         self.infected_p_day = tf.Variable(initial_value=np.zeros(n_days), name='infected_p_day', dtype=tf.float32)
         self.infected_p_day = self.infected_p_day[0].assign(infected_start)
         self.confirmed_p_day = tf.Variable(initial_value=np.zeros(n_days), name='confirmed_p', dtype=tf.float32)
@@ -46,8 +47,8 @@ class DayDrivenPandemie(object):
 
     def infect(self):
         immune = tf.reduce_sum(self.infected_p_day[:(self.day+1)])
-        n_eff = self.n_p * (self.total_population - immune) / self.total_population
-        infected_day = self.contagious_p_day[self.day] * n_eff * self.attack_rate
+        fraction_susceptible = (self.total_population - immune) / self.total_population
+        infected_day = self.contagious_p_day[self.day] * self.r0 * fraction_susceptible
         self.infected_p_day[self.day].assign(self.infected_p_day[self.day] + infected_day)
         self._assign_timing(infected_day)
 
@@ -62,17 +63,40 @@ class DayDrivenPandemie(object):
     def change_n_p(self, day, n_p):
         self.n_p_steps.update({str(day): n_p})
 
+    def loss(self, confirmed_data, dead_data):
+        dist = tfp.distributions.Poisson(self.death_p_day[self.burn_in:])
+        return tf.reduce_sum(dist.log_prob(dead_data))
+        #likelihood_deaths = np.log10(np.clip(poisson.pmf(deaths_expect, mu=deaths), a_min=eps, a_max=None))
+        #likelihood_deaths_0 = np.log10(np.clip(poisson.pmf(deaths_expect, mu=deaths_expect), a_min=eps, a_max=None))
+
+
+def train_step(optimizer, simulation, weights, confirmed_data, dead_data):
+    with tf.GradientTape() as tape:
+        current_loss = simulation.loss(confirmed_data, dead_data)
+    grads = tape.gradient(current_loss, weights)
+    optimizer.apply_gradients(zip(grads, weights))
+    return tf.reduce_mean(current_loss)
+
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     import matplotlib as mpl
     from plotting import with_latex
+    from load_data import load_jhu
     mpl.rcParams.update(with_latex)
 
-    days = np.arange(100)
+    data = load_jhu().iloc[39:]
+    confirmed_data, dead_data = data.iloc[:, 0].to_numpy().astype(int) - 16, data.iloc[:, 1].to_numpy().astype(int)
+
+    days = np.arange(dead_data.size)
     world = DayDrivenPandemie(n_days=len(days), lethality=0.2, detection_rate=0.8)
-    for i in days:
+    for i in range(world.n_days):
         world.update()
+
+    optimizer = tf.optimizers.Adam()
+    weights = [world.r0, world.infected_start, world.lethality]
+    for i in range(1000):
+        train_step(optimizer, world, weights, confirmed_data, dead_data)
 
     plt.plot(days, tf.cumsum(world.infected_p_day).numpy(), color='blue', label='infected (total)')
     plt.plot(days, tf.cumsum(world.confirmed_p_day).numpy(), color='blue', ls='dashed', label='confirmed (total)')
