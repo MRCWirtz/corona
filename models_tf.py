@@ -26,15 +26,16 @@ class DayDrivenPandemie(object):
 
         self.day = 0
         self.n_days = n_days + burn_in
-        self.infected_p_day = tf.Variable(initial_value=np.zeros(n_days), name='infected_p_day', dtype=tf.float32)
+        self.burn_in = burn_in
+        self.infected_p_day = tf.Variable(initial_value=np.zeros(self.n_days), name='infected_p_day', dtype=tf.float32)
         self.infected_p_day = self.infected_p_day[0].assign(infected_start)
-        self.confirmed_p_day = tf.Variable(initial_value=np.zeros(n_days), name='confirmed_p', dtype=tf.float32)
+        self.confirmed_p_day = tf.Variable(initial_value=np.zeros(self.n_days), name='confirmed_p', dtype=tf.float32)
         self.confirmed_p_day = self.confirmed_p_day[0].assign(confirmed_start)
-        self.death_p_day = tf.Variable(initial_value=np.zeros(n_days), name='death_p', dtype=tf.float32)
-        self.contagious_p_day = tf.Variable(initial_value=np.zeros(n_days), name='contagious_p', dtype=tf.float32)
-        self.cured_p_day = tf.Variable(initial_value=np.zeros(n_days), name='cured_p', dtype=tf.float32)
+        self.death_p_day = tf.Variable(initial_value=np.zeros(self.n_days), name='death_p', dtype=tf.float32)
+        self.contagious_p_day = tf.Variable(initial_value=np.zeros(self.n_days), name='contagious_p', dtype=tf.float32)
+        self.cured_p_day = tf.Variable(initial_value=np.zeros(self.n_days), name='cured_p', dtype=tf.float32)
 
-        self._assign_timing(infected_start)
+        self._assign_timing(self.infected_start)
 
     def _assign_timing(self, n):
         n_death = n * self.lethality
