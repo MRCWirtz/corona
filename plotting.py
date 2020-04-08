@@ -72,7 +72,7 @@ def fit_quality(days, confirmed_data, confirmed, dead_data, dead):
     return fig, axs
 
 
-def plot_model(days_data, confirmed_data, confirmed, dead_data, dead, cases=None, active=None):
+def plot_model(days_data, confirmed_data, confirmed, dead_data, dead, cases=None, active=None, cut_data=False):
 
     fig, axs = plt.subplots(2, 2)
     fig.set_figheight(9)
@@ -93,7 +93,8 @@ def plot_model(days_data, confirmed_data, confirmed, dead_data, dead, cases=None
     axs[0, 0].xaxis.set_major_formatter(dates.DateFormatter('%b'))
     axs[0, 0].plot_date(days_data, confirmed_data, marker='o', color='k', label='Data (Germany)')
     axs[0, 0].set_ylabel("Cases")
-    axs[0, 0].set_ylim(0, 1.5*np.max(confirmed_data))
+    if cut_data:
+        axs[0, 0].set_ylim(0, 1.5*np.max(confirmed_data))
     axs[0, 0].legend()
     axs[0, 0].grid(True)
 
@@ -102,7 +103,8 @@ def plot_model(days_data, confirmed_data, confirmed, dead_data, dead, cases=None
     axs[0, 1].xaxis.set_major_formatter(dates.DateFormatter('%b'))
     axs[0, 1].plot_date(days_data[1:], np.diff(confirmed_data), marker='o', color='k', label='Data (Germany)')
     axs[0, 1].set_ylabel("New cases per day")
-    axs[0, 1].set_ylim(0, 1.5*np.max(np.diff(confirmed_data)))
+    if cut_data:
+        axs[0, 1].set_ylim(0, 1.5*np.max(np.diff(confirmed_data)))
     axs[0, 1].legend()
     axs[0, 1].grid(True)
 
@@ -112,7 +114,8 @@ def plot_model(days_data, confirmed_data, confirmed, dead_data, dead, cases=None
     axs[1, 0].plot_date(days_data, dead_data, marker='o', color='k', label='Data (Germany)')
     axs[1, 0].set_xlabel("Time")
     axs[1, 0].set_ylabel("Deaths")
-    axs[1, 0].set_ylim(0, 1.5*np.max(dead_data))
+    if cut_data:
+        axs[1, 0].set_ylim(0, 1.5*np.max(dead_data))
     axs[1, 0].legend()
     axs[1, 0].grid(True)
 
@@ -123,7 +126,8 @@ def plot_model(days_data, confirmed_data, confirmed, dead_data, dead, cases=None
     axs[1, 1].legend()
     axs[1, 1].set_xlabel("Time")
     axs[1, 1].set_ylabel("New deaths per day")
-    axs[1, 1].set_ylim(0, 1.5*np.max(np.diff(dead_data)))
+    if cut_data:
+        axs[1, 1].set_ylim(0, 1.5*np.max(np.diff(dead_data)))
     axs[1, 1].legend()
     axs[1, 1].grid(True)
 

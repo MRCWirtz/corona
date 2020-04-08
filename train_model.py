@@ -58,7 +58,6 @@ def run_model(pars, n_sim):
                               t_death=pars.get('t-death', defaults['t-death']),
                               t_confirmed=pars.get('t-confirmed', defaults['t-confirmed']),
                               infected_start=pars.get('infected-start', defaults['infected-start']),
-                              contagious_start=pars.get('contagious-start', defaults['contagious-start']),
                               confirmed_start=pars.get('confirmed-start', defaults['confirmed-start']))
 
     if ('R0-1' in pars):

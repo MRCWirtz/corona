@@ -35,7 +35,7 @@ defaults = {
     'attack-rate': 0.15,
     'R0-0': 2.6,
     'detection-rate': 0.33,
-    'lethality': 0.015,
+    'lethality': 0.02,
     'burn-in': 13,
     'day-action-1': 17,
     'day-action-2': 24,

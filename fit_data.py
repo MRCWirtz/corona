@@ -86,7 +86,7 @@ plt.close("all")
 pred_len = 42 if (('R0-1' in scan_pars) or ('R0-lo-A' in scan_pars)) else 3
 cases, confirmed, dead, active = run_model(pars_opt, days.size + pred_len)
 
-fig, axs = plot_model(days_data, confirmed_data, confirmed, dead_data, dead, cases=cases, active=active)
+fig, axs = plot_model(days_data, confirmed_data, confirmed, dead_data, dead, cases=cases, active=active, cut_data=False)
 plt.tight_layout()
 plt.savefig('img/predict_model_%s.png' % identifier, bbox_inches='tight')
 plt.close()
