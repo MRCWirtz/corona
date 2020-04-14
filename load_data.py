@@ -29,13 +29,13 @@ def load_jhu(country="Germany"):
     return data
 
 
-def load_rki(raw=False):
+def load_rki(raw=False, saveonly=False):
     """ Get data from Robert Koch Institut (unprepared) """
     # Load data via REST api
     offset = 0
     data = pd.DataFrame()
     while True:
-        resp = requests.get("https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_COVID19/FeatureServer/0/query?where=1%3D1&outFields=Bundesland,Landkreis,Altersgruppe,Geschlecht,AnzahlFall,AnzahlTodesfall,Meldedatum,Datenstand,NeuerFall,NeuerTodesfall,Refdatum,NeuGenesen,AnzahlGenesen&outSR=4326&f=json&resultOffset={}".format(offset))
+        resp = requests.get("https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_COVID19/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=json&resultOffset={}".format(offset))
         if not resp.status_code == requests.codes.ok:
             raise RuntimeError("HTTP GET request failed")
         data_json = resp.json()
@@ -45,10 +45,13 @@ def load_rki(raw=False):
             offset += len(features)
         else:
             break
-    filename = "raw_rki_data_{}.csv".format(pd.to_datetime(data.Datenstand[0], dayfirst=True, format="%d.%m.%Y, %H:%M Uhr").strftime("%Y-%m-%d"))
-    data.to_csv(filename)
     data.Meldedatum = pd.to_datetime(data.Meldedatum, unit="ms")
     data.Refdatum = pd.to_datetime(data.Refdatum, unit="ms")
+    data.Datenstand = pd.to_datetime(data.Datenstand[0], dayfirst=True, format="%d.%m.%Y, %H:%M Uhr")
+    filename = "raw_rki_data_{}.csv".format(data.Datenstand[0].strftime("%Y-%m-%d"))
+    data.to_csv(filename)
+    if saveonly:
+        return 0
     if raw:
         return data
     pivot = pd.pivot_table(data, values=["AnzahlFall", "AnzahlTodesfall"], index="Meldedatum", aggfunc=np.sum)
