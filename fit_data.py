@@ -24,7 +24,7 @@ if kw.latex_style:
 identifier = '_%s_loss%s' % (kw.data_id, kw.loss)
 os.makedirs('img', exist_ok=True)
 if kw.data_id == "rki":
-    data = load_rki().iloc[37:-kw.discard_days] if kw.discard_days > 0 else load_rki().iloc[37:]
+    data = load_rki().iloc[52:-kw.discard_days] if kw.discard_days > 0 else load_rki().iloc[37:]
 elif kw.data_id == "jhu":
     data = load_jhu().iloc[39:-kw.discard_days] if kw.discard_days > 0 else load_jhu().iloc[39:]
 else:
