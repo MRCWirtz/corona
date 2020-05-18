@@ -41,15 +41,17 @@ except IndexError:
     pass
 
 # scan_pars = ['burn-in', 'infected-start', 'detection-rate']
-# scan_pars = ['lethality', 'detection-rate', 'R0-0']
 # scan_pars = ['lethality', 'detection-rate', 'infected-start']
 # scan_pars = ['detection-rate', 'burn-in', 'R0-1']
 # scan_pars = ['t-death', 'burn-in', 'R0-0']
 # scan_pars = ['detection-rate', 'burn-in', 'R0-0']
 # scan_pars = ['lethality', 'R0-0', 'R0-1']
 # scan_pars = ['lethality', 'R0-1', 'R0-2']
-# scan_pars = ['R0-0', 'R0-1', 'R0-2']
-scan_pars = ['R0-lo-A', 'R0-lo-B', 'R0-lo-C']
+# scan_pars = ['R0-lo-A', 'R0-lo-B', 'R0-lo-C']
+# scan_pars = ['infected-start', 'detection-rate', 'R0-0']
+# scan_pars = ['R0-0', 'R0-1', 'detection-rate']
+# scan_pars = ['R0-0', 'R0-1', 'day-action-1']
+scan_pars = ['R0-0', 'R0-1', 'R0-2']
 
 lowest_like = np.inf
 likelihoods = np.zeros([len(scan_range[key]) for key in scan_pars])
@@ -83,7 +85,7 @@ plt.savefig('img/fit_model%s.png' % identifier, bbox_inches='tight')
 plt.close("all")
 
 
-pred_len = 42 if (('R0-1' in scan_pars) or ('R0-lo-A' in scan_pars)) else 3
+pred_len = 120 if (('R0-1' in scan_pars) or ('R0-lo-A' in scan_pars)) else 3
 cases, confirmed, dead, active = run_model(pars_opt, days.size + pred_len)
 
 fig, axs = plot_model(days_data, confirmed_data, confirmed, dead_data, dead, cases=cases, active=active, cut_data=False)

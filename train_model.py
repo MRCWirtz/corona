@@ -61,10 +61,10 @@ def run_model(pars, n_sim):
                               confirmed_start=pars.get('confirmed-start', defaults['confirmed-start']))
 
     if ('R0-1' in pars):
-        world.change_n_p(n_burn_in + defaults['day-action-1'], pars.get('R0-1')/defaults['attack-rate'])
+        world.change_n_p(n_burn_in + pars.get('day-action-1', defaults['day-action-1']), pars.get('R0-1')/defaults['attack-rate'])
     if ('R0-2' in pars):
         n_burn_in = pars['burn-in'] if ('burn-in' in pars) else defaults['burn-in']
-        world.change_n_p(n_burn_in + defaults['day-action-2'], pars.get('R0-2')/defaults['attack-rate'])
+        world.change_n_p(n_burn_in + pars.get('day-action-2', defaults['day-action-2']), pars.get('R0-2')/defaults['attack-rate'])
 
     # Run burn-in phase without writing output
     world.update(n_sim=n_burn_in)
