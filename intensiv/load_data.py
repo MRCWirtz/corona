@@ -12,7 +12,7 @@ url = 'https://www.divi.de/divi-intensivregister-tagesreport-archiv-csv/'
 today = datetime.datetime.today()
 
 if cache and os.path.exists(path):
-    data = pd.read_csv(path)
+    data = pd.read_csv(path, usecols=['date', 'faelle_covid_aktuell'])
     start_day = datetime.datetime.strptime(data['date'].iloc[-1], '%Y-%m-%d')
 else:
     data = pd.DataFrame([], index=[], columns=['date', 'faelle_covid_aktuell'])
